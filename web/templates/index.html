@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumpy Skin Disease Research | Image Classification Study</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@400;600;700&display=swap"
+        rel="stylesheet">
+    <!-- Lucide Icons (CDN) -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+    <div class="wave-bg"></div>
+
+    <main class="container">
+        <!-- Hero Section -->
+        <header class="hero">
+            <h1>Lumpy Skin Disease Research Project</h1>
+            <p>Empowering cattle farmers with instant detection of Lumpy Skin Disease (LSD) through advanced Computer
+                Vision and Deep Learning. <strong>(IEEE Research Standard Model v2.0)</strong></p>
+        </header>
+
+        <!-- Recognition Area -->
+        <section class="main-card">
+            <div id="drop-area" class="upload-zone">
+                <i data-lucide="cloud-upload" class="upload-icon"></i>
+                <div class="upload-text">Drag and drop or click to upload cow photo</div>
+                <div class="upload-subtext">JPG, JPEG, PNG (max 10MB)</div>
+                <input type="file" id="file-input" accept="image/*" />
+            </div>
+
+            <!-- Preview and Predict -->
+            <div id="preview-container">
+                <img id="image-preview" src="#" alt="Preview" />
+                <button id="predict-btn" class="btn">
+                    <span class="btn-text">Detect Symptoms</span>
+                    <div id="loader" class="loader"></div>
+                </button>
+                <div class="upload-subtext" style="cursor: pointer; text-decoration: underline;" onclick="reset()">
+                    Upload different image</div>
+            </div>
+
+            <!-- Result Section -->
+            <div id="result-container" class="result-container">
+                <div class="result-header">Detection Result</div>
+                <div id="prediction-badge" class="prediction-badge">Healthy</div>
+                <div id="prediction-text"
+                    style="font-size: 1.5rem; font-weight: 700; text-align: center; margin-top: 0.5rem;">Healthy -
+                    Normal Skin</div>
+
+                <div style="margin-top: 1.5rem;">
+                    <div
+                        style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; color: var(--subtext-color); font-size: 0.875rem;">
+                        <span>AI Confidence Score</span>
+                        <span id="confidence-percentage">98.5%</span>
+                    </div>
+                    <div class="confidence-bar-container">
+                        <div id="confidence-bar" class="confidence-bar"></div>
+                    </div>
+                </div>
+
+                <p id="recommendation-text"
+                    style="color: var(--subtext-color); font-size: 0.875rem; font-style: italic; text-align: center; border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 1rem;">
+                    Model analysis complete. Always consult a veterinarian for official diagnosis.
+                </p>
+            </div>
+        </section>
+
+        <!-- Features Section -->
+        <section class="features">
+            <div class="feature-card">
+                <div class="feature-icon"><i data-lucide="zap"></i></div>
+                <h3>Instant Results</h3>
+                <p>Advanced neural networks process your cattle images in milliseconds for real-time assessment.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i data-lucide="shield"></i></div>
+                <h3>LSD Detection</h3>
+                <p>Specially trained on 1,000+ real-world Lumpy Skin Disease cases and healthy cattle from research
+                    repositories for <strong>>95% accuracy</strong>.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i data-lucide="heart"></i></div>
+                <h3>Livestock Care</h3>
+                <p>Designed for farmers to improve early intervention and prevent the spread of infections.</p>
+            </div>
+        </section>
+
+        <footer style="margin-bottom: 2rem; color: var(--subtext-color); font-size: 0.8rem;">
+            Lumpy Skin Disease Detection Research Project | Dataset and Model Evaluation
+        </footer>
+    </main>
+
+    <script src="/static/main.js"></script>
+    <script>
+        // Init Lucide Icons
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>
