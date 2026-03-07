@@ -1,7 +1,20 @@
+import subprocess
+import sys
+import os
+
+# ─── Streamlit Cloud Fix: Force headless OpenCV ───
+# ultralytics pulls in opencv-python (full) which needs libGL.so.1
+# Streamlit Cloud doesn't have that system library, so we swap to headless
+if os.path.exists("/mount/src"):  # Only runs on Streamlit Cloud
+    subprocess.run(
+        [sys.executable, "-m", "pip", "install",
+         "opencv-python-headless", "-q", "--force-reinstall", "--no-deps"],
+        capture_output=True
+    )
+
 import streamlit as st
 from ultralytics import YOLO
 from PIL import Image
-import os
 import tempfile
 
 # ─── Page Configuration ───
