@@ -4,25 +4,22 @@ import os
 # Path to the dataset (relative to the script location)
 data_path = os.path.dirname(os.path.abspath(__file__))
 
-# Use YOLOv8 classification model (nano version for speed)
-model = YOLO('yolov8n-cls.pt')
+# Use YOLOv8-Small classification model for better feature extraction (still fast, but more accurate)
+model = YOLO('yolov8s-cls.pt')
 
-# Train the model
-# We increase epochs to 100 and use patience to stop when it stops improving.
-# 5 epochs was not enough for the model to distinguish between classes.
-# Train the model 
-# Increased imgsz to 320 for better detail from real photographs.
-# Epochs set to 100 with patience for optimal training.
-print("Starting research-grade training...")
+# Train the model with higher resolution and advanced hyperparameters for IEEE standards
+print("Starting final research-grade training for 95%+ Accuracy...")
 results = model.train(
     data=data_path, 
-    epochs=100, 
-    imgsz=320, 
+    epochs=150,      # More epochs for deep learning
+    imgsz=416,      # High resolution for skin pathologies
     project=r'c:\lumpyskin\runs', 
     name='lumpy_classification',
-    patience=20,  # Early stopping
-    batch=32,    # Standard batch size
-    exist_ok=True # Overwrite existing run
+    patience=50,     # Allow more time to escape local minima
+    batch=16,       # Stable gradients
+    lr0=0.005,      # Stable starting LR
+    augment=True,    # Use built-in classification augmentations
+    exist_ok=True    # Overwrite/Refine existing run
 )
 
 print("Training complete. Results saved in c:\\lumpyskin\\runs\\lumpy_classification")
