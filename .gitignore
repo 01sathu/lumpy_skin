@@ -20,6 +20,13 @@ FMD_Cattle.zip
 test_res.json
 test_hf.py
 test_hf_lib.py
+test_pred2.py
+test_predictions.py
+*.cache
+
+# Base model weights (not needed for deployment)
+yolov8n-cls.pt
+yolov8s-cls.pt
 
 # IDE
 .vscode/
