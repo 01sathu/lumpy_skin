@@ -236,6 +236,7 @@ def load_model(model_path):
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 LUMPY_MODEL_PATH = os.path.join(BASE_DIR, "runs", "lumpy_classification", "weights", "best.pt")
 FMD_MODEL_PATH = os.path.join(BASE_DIR, "runs", "fmd_project", "fmd_classification", "weights", "best.pt")
+UDDER_MODEL_PATH = os.path.join(BASE_DIR, "runs", "classify", "runs", "udder_project", "udder_classification2", "weights", "best.pt")
 
 
 # ─── Expert Advice (Local — no external API needed) ───
@@ -267,6 +268,14 @@ def get_expert_advice(condition_name, is_healthy):
             "and vehicles. Provide soft feed and clean water to the affected animal. Follow "
             "your veterinarian's guidance on treatment and vaccination of the herd."
         )
+    elif "Mastitis" in condition_name or "Udder" in condition_name:
+        return (
+            "Bovine Mastitis or Udder Disease has been detected. This bacterial infection "
+            "causes inflammation of the mammary gland and udder tissue. Isolate the cow "
+            "to prevent spreading during milking. Contact your veterinarian for a culture test "
+            "to determine the specific bacteria and the appropriate antibiotic treatment. "
+            "Ensure milking equipment is thoroughly cleaned and sanitized."
+        )
     else:
         return (
             "An abnormal condition has been detected. Please isolate the animal as a "
@@ -291,12 +300,19 @@ def run_prediction(model, image_path, disease_type):
         else:
             pretty_name = "Healthy — No LSD Symptoms Found"
             is_healthy = True
-    else:
+    elif disease_type == "fmd":
         if "Foot" in class_name or "1" in class_name:
             pretty_name = "Foot and Mouth Disease Detected"
             is_healthy = False
         else:
             pretty_name = "Healthy — No FMD Symptoms Found"
+            is_healthy = True
+    else:
+        if "mastitis" in class_name.lower():
+            pretty_name = "Bovine Mastitis Detected"
+            is_healthy = False
+        else:
+            pretty_name = "Healthy — No Udder Disease Found"
             is_healthy = True
 
     advice = get_expert_advice(pretty_name, is_healthy)
@@ -326,7 +342,7 @@ def render_home():
     st.markdown('<div class="hero-title">🐄 Bovine Disease Diagnostic Center</div>', unsafe_allow_html=True)
     st.markdown('<div class="hero-subtitle">Select a condition to begin the examination</div>', unsafe_allow_html=True)
 
-    col1, spacer, col2 = st.columns([1, 0.15, 1])
+    col1, col2, col3 = st.columns([1, 1, 1])
 
     with col1:
         st.markdown("""
@@ -352,9 +368,21 @@ def render_home():
             go_detect("lumpy")
             st.rerun()
 
+    with col3:
+        st.markdown("""
+        <div class="disease-card">
+            <div class="card-icon">🐄</div>
+            <div class="card-title">Udder Disease</div>
+            <div class="card-desc">Inspect bovine udders for inflammation, swelling, and signs of mastitis</div>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("Start Udder Examination", key="btn_udder"):
+            go_detect("udder")
+            st.rerun()
+
     # ── Stats Section ──
     st.markdown("---")
-    s1, s2, s3 = st.columns(3)
+    s1, s2, s3, s4 = st.columns(4)
     with s1:
         st.markdown("""
         <div class="stat-box">
@@ -372,7 +400,14 @@ def render_home():
     with s3:
         st.markdown("""
         <div class="stat-box">
-            <div class="stat-value">487</div>
+            <div class="stat-value">120</div>
+            <div class="stat-label">Udder Samples</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with s4:
+        st.markdown("""
+        <div class="stat-box">
+            <div class="stat-value">547</div>
             <div class="stat-label">Healthy Baselines</div>
         </div>
         """, unsafe_allow_html=True)
@@ -383,8 +418,15 @@ def render_home():
 # ═══════════════════════════════════════════════
 def render_detect():
     disease = st.session_state.disease
-    display_name = "Foot and Mouth Disease" if disease == "fmd" else "Lumpy Skin Disease"
-    model_path = FMD_MODEL_PATH if disease == "fmd" else LUMPY_MODEL_PATH
+    if disease == "fmd":
+        display_name = "Foot and Mouth Disease"
+        model_path = FMD_MODEL_PATH
+    elif disease == "lumpy":
+        display_name = "Lumpy Skin Disease"
+        model_path = LUMPY_MODEL_PATH
+    else:
+        display_name = "Udder Disease (Mastitis)"
+        model_path = UDDER_MODEL_PATH
 
     # Back button
     if st.button("← Back to Selection", key="back_btn"):
