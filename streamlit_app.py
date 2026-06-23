@@ -16,10 +16,11 @@ import streamlit as st
 from ultralytics import YOLO
 from PIL import Image
 import tempfile
+import time
 
 # ─── Page Configuration ───
 st.set_page_config(
-    page_title="Bovine Disease Diagnostic Center",
+    page_title="CattleSense",
     page_icon="🐄",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -315,8 +316,26 @@ def run_prediction(model, image_path, disease_type):
             pretty_name = "Healthy — No Udder Disease Found"
             is_healthy = True
 
+    probs_dict = {result.names[i]: float(result.probs.data[i]) for i in range(len(result.names))}
+    
+    # Calculate healthy vs unhealthy probabilities
+    healthy_prob = 0.0
+    unhealthy_prob = 0.0
+    for c_name, prob in probs_dict.items():
+        c_name_lower = c_name.lower()
+        if "normal" in c_name_lower or "0" in c_name_lower:
+            healthy_prob += prob
+        else:
+            unhealthy_prob += prob
+            
+    # Normalize just in case
+    total = healthy_prob + unhealthy_prob
+    if total > 0:
+        healthy_prob /= total
+        unhealthy_prob /= total
+
     advice = get_expert_advice(pretty_name, is_healthy)
-    return pretty_name, top1_conf, is_healthy, advice
+    return pretty_name, top1_conf, is_healthy, advice, healthy_prob, unhealthy_prob
 
 
 # ─── Session State ───
@@ -330,6 +349,14 @@ def go_home():
     st.session_state.page = "home"
     st.session_state.disease = None
 
+def go_external():
+    st.session_state.page = "external"
+    st.session_state.disease = None
+
+def go_internal():
+    st.session_state.page = "internal"
+    st.session_state.disease = None
+
 def go_detect(disease):
     st.session_state.page = "detect"
     st.session_state.disease = disease
@@ -339,7 +366,45 @@ def go_detect(disease):
 #                   HOME PAGE
 # ═══════════════════════════════════════════════
 def render_home():
-    st.markdown('<div class="hero-title">🐄 Bovine Disease Diagnostic Center</div>', unsafe_allow_html=True)
+    st.markdown('<div class="hero-title">🐄 CattleSense</div>', unsafe_allow_html=True)
+    st.markdown('<div class="hero-subtitle">Select a category to begin</div>', unsafe_allow_html=True)
+
+    col1, col2 = st.columns([1, 1])
+
+    with col1:
+        st.markdown("""
+        <div class="disease-card">
+            <div class="card-icon">👁️</div>
+            <div class="card-title">External Diseases</div>
+            <div class="card-desc">Examine cattle for external diseases like FMD, LSD, and Udder Disease using Computer Vision</div>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("Explore External Diseases", key="btn_ext"):
+            go_external()
+            st.rerun()
+
+    with col2:
+        st.markdown("""
+        <div class="disease-card">
+            <div class="card-icon">🫀</div>
+            <div class="card-title">Internal Diseases</div>
+            <div class="card-desc">Diagnose internal conditions based on clinical symptoms and physiological data</div>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("Explore Internal Diseases", key="btn_int"):
+            go_internal()
+            st.rerun()
+
+
+# ═══════════════════════════════════════════════
+#             EXTERNAL DISEASES PAGE
+# ═══════════════════════════════════════════════
+def render_external():
+    if st.button("← Back to Categories", key="back_to_home_ext"):
+        go_home()
+        st.rerun()
+
+    st.markdown('<div class="hero-title">🐄 External Diseases</div>', unsafe_allow_html=True)
     st.markdown('<div class="hero-subtitle">Select a condition to begin the examination</div>', unsafe_allow_html=True)
 
     col1, col2, col3 = st.columns([1, 1, 1])
@@ -414,6 +479,19 @@ def render_home():
 
 
 # ═══════════════════════════════════════════════
+#             INTERNAL DISEASES PAGE
+# ═══════════════════════════════════════════════
+def render_internal():
+    if st.button("← Back to Categories", key="back_to_home_int"):
+        go_home()
+        st.rerun()
+
+    st.markdown('<div class="hero-title">🫀 Internal Diseases</div>', unsafe_allow_html=True)
+    st.markdown('<div class="hero-subtitle">Internal disease diagnosis module</div>', unsafe_allow_html=True)
+    st.info("The internal diseases module is currently under development. Stay tuned for updates!")
+
+
+# ═══════════════════════════════════════════════
 #               DETECTION PAGE
 # ═══════════════════════════════════════════════
 def render_detect():
@@ -429,8 +507,8 @@ def render_detect():
         model_path = UDDER_MODEL_PATH
 
     # Back button
-    if st.button("← Back to Selection", key="back_btn"):
-        go_home()
+    if st.button("← Back to External Diseases", key="back_btn"):
+        go_external()
         st.rerun()
 
     st.markdown(f'<div class="detect-header">Diagnostic Center</div>', unsafe_allow_html=True)
@@ -482,7 +560,7 @@ def render_detect():
                     tmp_path = tmp.name
 
                 try:
-                    prediction, confidence, is_healthy, advice = run_prediction(
+                    prediction, confidence, is_healthy, advice, healthy_prob, unhealthy_prob = run_prediction(
                         model, tmp_path, disease
                     )
 
@@ -499,6 +577,43 @@ def render_detect():
                         <div class="result-advice">{advice}</div>
                     </div>
                     """, unsafe_allow_html=True)
+                    
+                    # ── Probability Graph Section ──
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    st.markdown('<h3 style="color:#f8fafc; font-size:1.25rem;">Health Status Analysis</h3>', unsafe_allow_html=True)
+                    
+                    hist_data = [
+                        ("Unhealthy (Disease Symptoms)", unhealthy_prob * 100, "#ef4444" if unhealthy_prob > healthy_prob else "#fca5a5"),
+                        ("Healthy (No Symptoms)", healthy_prob * 100, "#10b981" if healthy_prob > unhealthy_prob else "#6ee7b7")
+                    ]
+                    
+                    graph_html = '<div style="background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 0.75rem; padding: 1.5rem; margin-top: 0.5rem;">'
+                    for label, pct, bar_color in hist_data:
+                        graph_html += f"""
+<div style="margin-bottom: 0.75rem;">
+    <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem; font-size: 0.9rem;">
+        <span style="color: #e2e8f0;">{label}</span>
+        <span style="color: #94a3b8; font-weight: 600;">{pct:.1f}%</span>
+    </div>
+    <div style="width: 100%; background: rgba(0, 0, 0, 0.3); border-radius: 0.25rem; height: 12px; overflow: hidden;">
+        <div style="width: {pct}%; background: {bar_color}; height: 100%; border-radius: 0.25rem; transition: width 0.5s ease;"></div>
+    </div>
+</div>
+"""
+                    graph_html += '</div>'
+                    
+                    st.markdown(graph_html, unsafe_allow_html=True)
+                    
+                    st.markdown(f"""
+                    <div style="background: rgba(30, 41, 59, 0.4); padding: 1.25rem; border-radius: 0.75rem; border-left: 4px solid #3b82f6; margin-top: 1rem;">
+                        <div style="color: #cbd5e1; font-size: 0.95rem; line-height: 1.6;">
+                            <b>Analysis Explanation:</b> This histogram groups the AI model's raw probabilities into two overall categories: 
+                            <b>Healthy</b> and <b>Unhealthy</b>. 
+                            The model estimates a <b>{unhealthy_prob * 100:.1f}%</b> probability that the animal exhibits symptoms of the selected disease, 
+                            and a <b>{healthy_prob * 100:.1f}%</b> probability that the animal is healthy.
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
 
                 except Exception as e:
                     st.error(f"An error occurred during examination: {str(e)}")
@@ -508,10 +623,30 @@ def render_detect():
                         os.remove(tmp_path)
 
 
+if "splashed" not in st.session_state:
+    st.session_state.splashed = False
+
 # ═══════════════════════════════════════════════
 #                ROUTER
 # ═══════════════════════════════════════════════
-if st.session_state.page == "home":
-    render_home()
-elif st.session_state.page == "detect":
-    render_detect()
+if not st.session_state.splashed:
+    # Splash Screen
+    st.markdown("<br><br><br>", unsafe_allow_html=True)
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col2:
+        logo_path = os.path.join(BASE_DIR, "cattlesense_logo.png")
+        if os.path.exists(logo_path):
+            st.image(logo_path, use_container_width=True)
+        st.markdown("<h2 style='text-align: center; color: #f8fafc;'>Initializing CattleSense...</h2>", unsafe_allow_html=True)
+    time.sleep(1)
+    st.session_state.splashed = True
+    st.rerun()
+else:
+    if st.session_state.page == "home":
+        render_home()
+    elif st.session_state.page == "external":
+        render_external()
+    elif st.session_state.page == "internal":
+        render_internal()
+    elif st.session_state.page == "detect":
+        render_detect()
