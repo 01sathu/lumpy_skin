@@ -53,7 +53,7 @@ render_html("""
     #MainMenu, header, footer { visibility: hidden; }
     .block-container {
         padding-top: 2rem;
-        padding-bottom: 4rem;
+        padding-bottom: 5rem;
         max-width: 1200px;
     }
 
@@ -223,6 +223,43 @@ render_html("""
         margin-bottom: 2rem;
     }
 
+    /* ── Streamlit Native Chat Element Custom Styling ── */
+    [data-testid="stChatMessage"] {
+        background: #FFFFFF !important;
+        border: 1px solid #E5E7EB !important;
+        border-radius: 20px !important;
+        padding: 1.25rem 1.5rem !important;
+        margin-bottom: 1rem !important;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08) !important;
+    }
+    [data-testid="stChatMessage"] p, 
+    [data-testid="stChatMessage"] li, 
+    [data-testid="stChatMessage"] span, 
+    [data-testid="stChatMessage"] div {
+        color: #1F2937 !important;
+        font-size: 1rem !important;
+        line-height: 1.65 !important;
+    }
+    [data-testid="stChatMessage"] strong {
+        color: #0F172A !important;
+    }
+
+    /* Fixed Bottom Chat Input Bar */
+    [data-testid="stChatInput"] {
+        background: #FFFFFF !important;
+        border: 2px solid #10B981 !important;
+        border-radius: 24px !important;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25) !important;
+    }
+    [data-testid="stChatInput"] textarea {
+        color: #0F172A !important;
+        font-size: 1.05rem !important;
+        font-weight: 500 !important;
+    }
+    [data-testid="stChatInput"] textarea::placeholder {
+        color: #9CA3AF !important;
+    }
+
     /* ── White Stat Cards ── */
     .stat-box {
         background: #FFFFFF;
@@ -245,16 +282,6 @@ render_html("""
         letter-spacing: 0.5px;
         font-weight: 600;
         margin-top: 0.25rem;
-    }
-
-    /* ── Chatbot UI Box ── */
-    .chat-card {
-        background: #FFFFFF;
-        border: 1px solid #E5E7EB;
-        border-radius: 20px;
-        padding: 1.5rem;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-        margin-bottom: 1.5rem;
     }
 
     /* ── File Uploader Override ── */
@@ -857,19 +884,21 @@ def render_chatbot():
     render_navbar()
 
     render_html('<div class="detect-header">💬 CattleSense Veterinary Assistant</div>')
-    render_html('<div class="detect-sub">Powered by Gemini AI — Strictly specialized in Cattle Health & Bovine Veterinary Care</div>')
+    render_html('<div class="detect-sub">Powered by Gemini AI — Specialized exclusively in Cattle Health & Bovine Care</div>')
 
     # Sidebar API key configuration
     gemini_key_input = st.sidebar.text_input(
         "🔑 Gemini API Key (Optional)",
         type="password",
-        help="Enter your Google Gemini API key to enable live Gemini LLM responses. If omitted, local expert knowledge engine is used."
+        help="Enter your Google Gemini API key to enable live Gemini LLM responses."
     )
 
-    c_left, c_right = st.columns([4, 1])
+    c_left, c_right = st.columns([3.5, 1.5])
+    with c_left:
+        st.markdown("<div style='color: #E2E8F0; font-size: 1.05rem; font-weight: 600; padding-top: 0.4rem;'>💬 Active Chat Session</div>", unsafe_allow_html=True)
     with c_right:
         render_html('<div class="sec-button">')
-        if st.button("🧹 Clear Chat", key="clear_chat_btn"):
+        if st.button("🧹 Clear Chat History", key="clear_chat_btn"):
             st.session_state.chat_messages = [
                 {
                     "role": "assistant",
@@ -879,11 +908,10 @@ def render_chatbot():
             st.rerun()
         render_html('</div>')
 
-    render_html('<div class="chat-card">')
-    st.markdown("<h4 style='color: #0F172A; margin-bottom: 1rem; font-family: Manrope;'>Ask a Question</h4>", unsafe_allow_html=True)
-    
+    render_html("<br>")
+
     # Suggested prompt chips
-    st.markdown("<div style='font-size: 0.85rem; color: #6B7280; font-weight: 700; margin-bottom: 0.5rem;'>SUGGESTED QUESTIONS:</div>", unsafe_allow_html=True)
+    st.markdown("<div style='font-size: 0.85rem; color: #94A3B8; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.6rem;'>QUICK TOPIC SUGGESTIONS:</div>", unsafe_allow_html=True)
     p1, p2, p3, p4 = st.columns(4)
     suggested_prompt = None
     with p1:
@@ -899,29 +927,27 @@ def render_chatbot():
         if st.button("🦶 FMD Warning Signs", key="chip4"):
             suggested_prompt = "What are the key warning signs of Foot and Mouth Disease?"
 
-    # Display chat conversation history
+    render_html("<br>")
+
+    # Display chat conversation history in clean white bubbles
     for msg in st.session_state.chat_messages:
         avatar = "🐄" if msg["role"] == "assistant" else "👤"
         with st.chat_message(msg["role"], avatar=avatar):
             st.markdown(msg["content"])
 
-    # User input chat box
-    user_input = st.chat_input("Type your cattle health or disease question...") or suggested_prompt
+    # Streamlit native fixed chat input bar at the bottom
+    user_input = st.chat_input("Type your cattle health question here...") or suggested_prompt
 
     if user_input:
-        # Append user message
         st.session_state.chat_messages.append({"role": "user", "content": user_input})
         with st.chat_message("user", avatar="👤"):
             st.markdown(user_input)
 
-        # Generate Gemini AI reply
         with st.chat_message("assistant", avatar="🐄"):
             with st.spinner("Consulting CattleSense AI..."):
                 reply = query_gemini_cattle_bot(user_input, st.session_state.chat_messages[:-1], gemini_key_input)
                 st.markdown(reply)
                 st.session_state.chat_messages.append({"role": "assistant", "content": reply})
-
-    render_html('</div>')
 
 
 # ═══════════════════════════════════════════════
