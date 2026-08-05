@@ -21,7 +21,7 @@ import pandas as pd
 
 # ─── Page Configuration ───
 st.set_page_config(
-    page_title="CattleSense",
+    page_title="CattleSense — AI Bovine Diagnostic Platform",
     page_icon="🐄",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -105,7 +105,7 @@ render_html("""
         border-bottom: none !important;
         border-top-left-radius: 24px !important;
         border-top-right-radius: 24px !important;
-        padding: 2.5rem 2rem 1rem 2rem !important;
+        padding: 2.25rem 1.5rem 1rem 1.5rem !important;
         text-align: center !important;
         display: flex !important;
         flex-direction: column !important;
@@ -122,27 +122,27 @@ render_html("""
         border-top: none !important;
         border-bottom-left-radius: 24px !important;
         border-bottom-right-radius: 24px !important;
-        padding: 0 2rem 2.25rem 2rem !important;
+        padding: 0 1.5rem 2rem 1.5rem !important;
         box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.15) !important;
         box-sizing: border-box !important;
     }
 
     .card-icon {
-        font-size: 3.5rem;
-        margin-bottom: 1rem;
+        font-size: 3.25rem;
+        margin-bottom: 0.75rem;
         line-height: 1;
     }
     .card-title {
         font-family: 'Manrope', sans-serif;
-        font-size: 1.5rem;
+        font-size: 1.4rem;
         font-weight: 700;
         color: #0F172A;
         margin-bottom: 0.5rem;
     }
     .card-desc {
-        font-size: 0.95rem;
+        font-size: 0.92rem;
         color: #4B5563;
-        line-height: 1.6;
+        line-height: 1.55;
     }
 
     /* ── Category Screen Cards ── */
@@ -182,7 +182,7 @@ render_html("""
         border: none !important;
         border-radius: 16px !important;
         padding: 0.85rem 1.5rem !important;
-        font-size: 1rem !important;
+        font-size: 0.98rem !important;
         font-weight: 700 !important;
         font-family: 'Manrope', sans-serif !important;
         transition: all 0.3s ease !important;
@@ -247,6 +247,16 @@ render_html("""
         margin-top: 0.25rem;
     }
 
+    /* ── Chatbot UI Box ── */
+    .chat-card {
+        background: #FFFFFF;
+        border: 1px solid #E5E7EB;
+        border-radius: 20px;
+        padding: 1.5rem;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        margin-bottom: 1.5rem;
+    }
+
     /* ── File Uploader Override ── */
     [data-testid="stFileUploader"] {
         background: #FFFFFF !important;
@@ -258,16 +268,6 @@ render_html("""
     [data-testid="stFileUploader"] label {
         color: #0F172A !important;
         font-weight: 700 !important;
-    }
-
-    /* ── Questionnaire White Cards ── */
-    .q-card-white {
-        background: #FFFFFF;
-        border: 1px solid #E5E7EB;
-        border-radius: 18px;
-        padding: 1.5rem;
-        margin-bottom: 1rem;
-        box-shadow: 0 4px 14px rgba(0,0,0,0.05);
     }
 
     /* ── Results Box ── */
@@ -317,12 +317,38 @@ render_html("""
 # ─── Navigation Header Component ───
 def render_navbar():
     render_html("""
-    <div class="top-nav">
-        <div class="nav-brand">
-            🐄 <span>CattleSense</span>
+    <div style="background: rgba(14, 43, 35, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px; padding: 0.75rem 1.5rem; margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between;">
+        <div style="font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 1.35rem; color: #FFFFFF;">
+            🐄 <span style="color: #34D399;">CattleSense</span>
         </div>
     </div>
     """)
+    col_nav1, col_nav2, col_nav3, col_nav4 = st.columns([1, 1, 1, 1])
+    with col_nav1:
+        render_html('<div class="sec-button">')
+        if st.button("🏠 Home", key="nav_home"):
+            go_home()
+            st.rerun()
+        render_html('</div>')
+    with col_nav2:
+        render_html('<div class="sec-button">')
+        if st.button("👁️ External", key="nav_ext"):
+            go_external()
+            st.rerun()
+        render_html('</div>')
+    with col_nav3:
+        render_html('<div class="sec-button">')
+        if st.button("🫀 Internal", key="nav_int"):
+            go_internal()
+            st.rerun()
+        render_html('</div>')
+    with col_nav4:
+        render_html('<div class="sec-button">')
+        if st.button("💬 Chatbot", key="nav_chat"):
+            go_chatbot()
+            st.rerun()
+        render_html('</div>')
+    render_html("<br>")
 
 
 # ─── Model Loading ───
@@ -523,11 +549,211 @@ def run_prediction(model, image_path, disease_type):
     return pretty_name, top1_conf, is_healthy, advice, healthy_prob, unhealthy_prob
 
 
+# ─── Gemini Cattle Health Chatbot Engine ───
+def query_gemini_cattle_bot(user_prompt, history_messages, api_key=None):
+    """
+    Query Google Gemini LLM with strict Cattle-Only domain guardrails.
+    """
+    prompt_lower = user_prompt.lower()
+
+    # Off-topic triggers to reject immediately
+    off_topic_indicators = [
+        "python code", "write a code", "calculator", "who is the president", "capital of",
+        "football", "cricket", "movie", "actor", "recipe for", "quantum physics",
+        "solve this equation", "who won", "javascript", "html code", "tell me a joke about dogs",
+        "cat care", "pet rabbit", "iphone", "android", "car engine", "stock market",
+        "crypto", "bitcoin", "politics", "election"
+    ]
+
+    # Cattle relevance keywords
+    cattle_keywords = [
+        "cow", "cows", "cattle", "bull", "bulls", "calf", "calves", "heifer", "steer", "ox", "oxen",
+        "bovine", "lumpy", "lsd", "fmd", "foot and mouth", "mastitis", "udder", "bloat", "tympany",
+        "milk fever", "hypocalcemia", "ketosis", "acetonemia", "rumen", "ruminant", "lactation",
+        "calving", "veterinary", "herd", "livestock", "feed", "pasture", "silage", "colostrum",
+        "vaccine", "deworming", "milk yield", "teat", "hoof", "rot", "ringworm", "ticks", "flies",
+        "disease", "symptom", "infection", "treatment", "cure", "health", "farm", "dairy"
+    ]
+
+    off_topic_refusal = (
+        "I am CattleSense Assistant, specialized exclusively in cattle health and bovine veterinary care. "
+        "Please ask me questions related to cattle diseases, symptoms, nutrition, or herd management."
+    )
+
+    is_explicit_offtopic = any(indicator in prompt_lower for indicator in off_topic_indicators)
+    is_cattle_related = any(kw in prompt_lower for kw in cattle_keywords)
+
+    if is_explicit_offtopic and not is_cattle_related:
+        return off_topic_refusal
+
+    # Retrieve API key from param, env, or secrets
+    effective_key = api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    if not effective_key:
+        try:
+            effective_key = st.secrets.get("GEMINI_API_KEY") or st.secrets.get("GOOGLE_API_KEY")
+        except Exception:
+            pass
+
+    system_instruction = (
+        "You are CattleSense Assistant, an expert AI veterinary consultant specialized EXCLUSIVELY in "
+        "cattle health, bovine diseases (such as Lumpy Skin Disease, Foot & Mouth Disease, Udder Mastitis, "
+        "Bloating/Ruminal Tympany, Milk Fever/Hypocalcemia, Ketosis/Acetonemia), livestock nutrition, "
+        "breeding, and herd management.\n\n"
+        "STRICT SYSTEM RULE:\n"
+        "You must ONLY answer questions related to cattle (cows, bulls, calves, heifers, oxen, buffaloes), "
+        "bovine health, diseases, veterinary treatments, livestock feeding, and farm management.\n\n"
+        "If the user asks ANY question outside of cattle health and bovine livestock care, you MUST politely decline "
+        "and respond with EXACTLY:\n"
+        "'I am CattleSense Assistant, specialized exclusively in cattle health and bovine veterinary care. "
+        "Please ask me questions related to cattle diseases, symptoms, nutrition, or herd management.'"
+    )
+
+    # Try Google GenAI SDK if key is available
+    if effective_key:
+        try:
+            from google import genai
+            client = genai.Client(api_key=effective_key)
+            
+            contents = []
+            for m in history_messages[-6:]:
+                role = "user" if m["role"] == "user" else "model"
+                contents.append({"role": role, "parts": [{"text": m["content"]}]})
+            contents.append({"role": "user", "parts": [{"text": user_prompt}]})
+
+            response = client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=contents,
+                config={
+                    'system_instruction': system_instruction,
+                    'temperature': 0.3,
+                    'max_output_tokens': 800
+                }
+            )
+            if response.text:
+                return response.text
+        except Exception:
+            # Fallback to direct REST call via requests
+            try:
+                import requests
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={effective_key}"
+                contents = []
+                for m in history_messages[-6:]:
+                    role = "user" if m["role"] == "user" else "model"
+                    contents.append({"role": role, "parts": [{"text": m["content"]}]})
+                contents.append({"role": "user", "parts": [{"text": user_prompt}]})
+
+                payload = {
+                    "system_instruction": {"parts": [{"text": system_instruction}]},
+                    "contents": contents,
+                    "generationConfig": {"temperature": 0.3, "maxOutputTokens": 800}
+                }
+                res = requests.post(url, json=payload, timeout=10)
+                if res.status_code == 200:
+                    return res.json()["candidates"][0]["content"]["parts"][0]["text"]
+            except Exception:
+                pass
+
+    # Local Knowledge Engine Fallback if offline or keyless
+    return generate_local_cattle_knowledge_reply(user_prompt, is_cattle_related, off_topic_refusal)
+
+
+def generate_local_cattle_knowledge_reply(prompt, is_cattle_related, refusal_msg):
+    """Local cattle health knowledge engine for offline / keyless operation."""
+    p = prompt.lower()
+
+    if not is_cattle_related:
+        return refusal_msg
+
+    if "lumpy" in p or "lsd" in p:
+        return (
+            "🐄 **Lumpy Skin Disease (LSD) Guidance:**\n\n"
+            "- **Symptoms:** Firm, raised skin nodules (2–5 cm), fever, enlarged lymph nodes, eye/nasal discharge, and reduced milk yield.\n"
+            "- **Cause:** Capripoxvirus transmitted primarily by biting insects (flies, mosquitoes, ticks).\n"
+            "- **Prevention & Management:**\n"
+            "  1. Isolate infected cattle immediately to stop vector transmission.\n"
+            "  2. Apply insect repellents and insecticides around stalls.\n"
+            "  3. Vaccinate healthy herd members using homologated LSD vaccines.\n"
+            "  4. Provide supportive care: wound sprays for ruptured nodules and anti-inflammatories under veterinary guidance."
+        )
+    elif "foot" in p or "fmd" in p or "mouth" in p:
+        return (
+            "🦶 **Foot and Mouth Disease (FMD) Guidance:**\n\n"
+            "- **Symptoms:** Vesicles (blisters) on tongue, lips, gums, interdigital hoof space, and teats; severe lameness, fever, and profuse salivation (drooling).\n"
+            "- **Cause:** Highly contagious Aphthovirus spread via aerosols, direct contact, or contaminated footwear/vehicles.\n"
+            "- **Prevention & Control:**\n"
+            "  1. Immediate strict quarantine of affected premises.\n"
+            "  2. Disinfect equipment with sodium carbonate or citric acid solutions.\n"
+            "  3. Provide soft mash feeds and clean water for mouth-sore animals.\n"
+            "  4. Report suspect cases immediately to government veterinary authorities."
+        )
+    elif "mastitis" in p or "udder" in p:
+        return (
+            "🥛 **Udder Disease / Bovine Mastitis Guidance:**\n\n"
+            "- **Symptoms:** Swollen, hot, or painful udder quarters; abnormal milk containing clots, flakes, or watery whey; fever.\n"
+            "- **Types:** Environmental vs. Contagious Mastitis (Staphylococcus aureus, Streptococcus agalactiae).\n"
+            "- **Management:**\n"
+            "  1. Perform California Mastitis Test (CMT) for early quarter detection.\n"
+            "  2. Milk affected cows last using clean, sanitized equipment.\n"
+            "  3. Administer intramammary antibiotics specified by milk culture.\n"
+            "  4. Maintain clean, dry bedding and post-milking teat dips."
+        )
+    elif "bloat" in p or "tympany" in p or "swollen left" in p:
+        return (
+            "🎈 **Ruminal Tympany (Bloat) Guidance:**\n\n"
+            "- **Symptoms:** Severe distension of the left flank, rapid breathing, kicking at abdomen, refusal to eat, and severe distress.\n"
+            "- **Types:** Frothy Bloat (legumes/alfalfa grazing) vs. Free-Gas Bloat (esophageal obstruction or grain overload).\n"
+            "- **Emergency Action:**\n"
+            "  1. Keep the cow standing and moving; do not let it lie down.\n"
+            "  2. Administer anti-foaming agents (drench with vegetable oil or poloxalene).\n"
+            "  3. In severe life-threatening suffocation, a veterinarian must use a stomach tube or trocar."
+        )
+    elif "milk fever" in p or "hypocalcemia" in p or "downer" in p:
+        return (
+            "🥛 **Milk Fever (Hypocalcemia) Guidance:**\n\n"
+            "- **Symptoms:** Occurs within 48–72 hours post-calving. Muscle weakness, unsteadiness, S-shaped neck curvature, cold ears/legs, inability to stand.\n"
+            "- **Emergency Treatment:**\n"
+            "  1. Call a vet immediately for slow intravenous calcium borogluconate (400 mL).\n"
+            "  2. **CRITICAL:** Do NOT attempt to orally drench a downer cow due to loss of swallowing reflex (pneumonia risk).\n"
+            "  3. Prop the cow up in a sternal position with straw bales to prevent bloating."
+        )
+    elif "ketosis" in p or "acetonemia" in p:
+        return (
+            "📉 **Ketosis (Acetonemia) Guidance:**\n\n"
+            "- **Symptoms:** 2–6 weeks post-calving in high-yield dairy cows. Sweet acetone odor on breath/milk, rapid weight loss, refusal of concentrates.\n"
+            "- **Management:**\n"
+            "  1. Administer oral propylene glycol (300 g twice daily) for 3–5 days.\n"
+            "  2. Veterinarians may administer IV 50% dextrose solution.\n"
+            "  3. Ensure high-energy balanced transition rations pre- and post-calving."
+        )
+    elif "feed" in p or "nutrition" in p or "diet" in p:
+        return (
+            "🌾 **Cattle Feeding & Nutrition Best Practices:**\n\n"
+            "- **Dry Matter Intake (DMI):** Dairy cows require 3.5%–4% of body weight in DMI daily.\n"
+            "- **Forage-to-Concentrate Ratio:** Maintain minimum 40:60 forage-to-concentrate ratio to preserve rumen health.\n"
+            "- **Clean Water:** Dairy cows require 100–150 liters of clean, fresh water per day."
+        )
+    else:
+        return (
+            "🐄 **Cattle Health Assistant Guidance:**\n\n"
+            "I am ready to help you with bovine health management. You can ask me about:\n"
+            "1. **External Diseases:** Lumpy Skin Disease (LSD), Foot & Mouth Disease (FMD), Udder Mastitis.\n"
+            "2. **Internal Metabolic Conditions:** Bloating (Ruminal Tympany), Milk Fever (Hypocalcemia), Ketosis.\n"
+            "3. **Herd Management:** Vaccination schedules, deworming, nutritional guidelines, and calving protocols."
+        )
+
+
 # ─── Session State Routing ───
 if "page" not in st.session_state:
     st.session_state.page = "home"
 if "disease" not in st.session_state:
     st.session_state.disease = None
+if "chat_messages" not in st.session_state:
+    st.session_state.chat_messages = [
+        {
+            "role": "assistant",
+            "content": "Hello! I am CattleSense Assistant, powered by Gemini AI. Ask me any question related to cattle health, diseases, symptoms, treatment, nutrition, or herd management."
+        }
+    ]
 
 def go_home():
     st.session_state.page = "home"
@@ -539,6 +765,10 @@ def go_external():
 
 def go_internal():
     st.session_state.page = "internal"
+    st.session_state.disease = None
+
+def go_chatbot():
+    st.session_state.page = "chatbot"
     st.session_state.disease = None
 
 def go_detect(disease):
@@ -557,9 +787,9 @@ def render_home():
     render_navbar()
 
     render_html('<div class="hero-title">🐄 CattleSense</div>')
-    render_html('<div class="hero-subtitle">Select a category to begin</div>')
+    render_html('<div class="hero-subtitle">Select a category to begin examination or consult our AI Chatbot</div>')
 
-    col1, col2 = st.columns(2, gap="large")
+    col1, col2, col3 = st.columns(3, gap="medium")
 
     with col1:
         render_html("""
@@ -580,7 +810,7 @@ def render_home():
         <div class="home-card-top">
             <div class="card-icon">🫀</div>
             <div class="card-title">Internal Diseases</div>
-            <div class="card-desc">Diagnose internal conditions based on clinical symptoms and physiological data</div>
+            <div class="card-desc">Diagnose internal conditions based on clinical symptoms and physiological questionnaires</div>
         </div>
         <div class="home-card-bottom">
         """)
@@ -588,6 +818,94 @@ def render_home():
             go_internal()
             st.rerun()
         render_html('</div>')
+
+    with col3:
+        render_html("""
+        <div class="home-card-top">
+            <div class="card-icon">💬</div>
+            <div class="card-title">Cattle Assistant</div>
+            <div class="card-desc">Consult our specialized Gemini AI Chatbot for cattle health, symptoms, and veterinary advice</div>
+        </div>
+        <div class="home-card-bottom">
+        """)
+        if st.button("Launch Chatbot", key="btn_chat"):
+            go_chatbot()
+            st.rerun()
+        render_html('</div>')
+
+
+# ═══════════════════════════════════════════════
+#             CATTLE HEALTH CHATBOT PAGE
+# ═══════════════════════════════════════════════
+def render_chatbot():
+    render_navbar()
+
+    render_html('<div class="detect-header">💬 CattleSense Veterinary Assistant</div>')
+    render_html('<div class="detect-sub">Powered by Gemini AI — Strictly specialized in Cattle Health & Bovine Veterinary Care</div>')
+
+    # Sidebar API key configuration
+    gemini_key_input = st.sidebar.text_input(
+        "🔑 Gemini API Key (Optional)",
+        type="password",
+        help="Enter your Google Gemini API key to enable live Gemini LLM responses. If omitted, local expert knowledge engine is used."
+    )
+
+    c_left, c_right = st.columns([4, 1])
+    with c_right:
+        render_html('<div class="sec-button">')
+        if st.button("🧹 Clear Chat", key="clear_chat_btn"):
+            st.session_state.chat_messages = [
+                {
+                    "role": "assistant",
+                    "content": "Hello! I am CattleSense Assistant, powered by Gemini AI. Ask me any question related to cattle health, diseases, symptoms, treatment, nutrition, or herd management."
+                }
+            ]
+            st.rerun()
+        render_html('</div>')
+
+    render_html('<div class="chat-card">')
+    st.markdown("<h4 style='color: #0F172A; margin-bottom: 1rem; font-family: Manrope;'>Ask a Question</h4>", unsafe_allow_html=True)
+    
+    # Suggested prompt chips
+    st.markdown("<div style='font-size: 0.85rem; color: #6B7280; font-weight: 700; margin-bottom: 0.5rem;'>SUGGESTED QUESTIONS:</div>", unsafe_allow_html=True)
+    p1, p2, p3, p4 = st.columns(4)
+    suggested_prompt = None
+    with p1:
+        if st.button("🌾 Bloating Prevention", key="chip1"):
+            suggested_prompt = "What are the symptoms and emergency treatment for Bloating in cattle?"
+    with p2:
+        if st.button("🥛 Milk Fever Signs", key="chip2"):
+            suggested_prompt = "How do I identify early stage Milk Fever in a dairy cow?"
+    with p3:
+        if st.button("🦟 LSD Transmission", key="chip3"):
+            suggested_prompt = "How is Lumpy Skin Disease transmitted and prevented?"
+    with p4:
+        if st.button("🦶 FMD Warning Signs", key="chip4"):
+            suggested_prompt = "What are the key warning signs of Foot and Mouth Disease?"
+
+    # Display chat conversation history
+    for msg in st.session_state.chat_messages:
+        avatar = "🐄" if msg["role"] == "assistant" else "👤"
+        with st.chat_message(msg["role"], avatar=avatar):
+            st.markdown(msg["content"])
+
+    # User input chat box
+    user_input = st.chat_input("Type your cattle health or disease question...") or suggested_prompt
+
+    if user_input:
+        # Append user message
+        st.session_state.chat_messages.append({"role": "user", "content": user_input})
+        with st.chat_message("user", avatar="👤"):
+            st.markdown(user_input)
+
+        # Generate Gemini AI reply
+        with st.chat_message("assistant", avatar="🐄"):
+            with st.spinner("Consulting CattleSense AI..."):
+                reply = query_gemini_cattle_bot(user_input, st.session_state.chat_messages[:-1], gemini_key_input)
+                st.markdown(reply)
+                st.session_state.chat_messages.append({"role": "assistant", "content": reply})
+
+    render_html('</div>')
 
 
 # ═══════════════════════════════════════════════
@@ -1096,6 +1414,8 @@ else:
         render_external()
     elif st.session_state.page == "internal":
         render_internal()
+    elif st.session_state.page == "chatbot":
+        render_chatbot()
     elif st.session_state.page == "detect":
         render_detect()
     elif st.session_state.page == "detect_internal":
