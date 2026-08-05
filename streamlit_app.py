@@ -554,7 +554,23 @@ def query_gemini_cattle_bot(user_prompt, history_messages, api_key=None):
     """
     Query Google Gemini LLM with strict Cattle-Only domain guardrails.
     """
-    prompt_lower = user_prompt.lower()
+    prompt_lower = user_prompt.strip().lower()
+
+    # Friendly conversational greetings
+    greeting_triggers = ["hi", "hello", "hey", "greetings", "good morning", "good afternoon", "good evening", "who are you", "what can you do", "help", "start"]
+
+    is_greeting = any(prompt_lower == gt or prompt_lower.startswith(gt + " ") or prompt_lower.endswith(" " + gt) for gt in greeting_triggers)
+
+    if is_greeting:
+        return (
+            "👋 **Hello! Welcome to CattleSense Assistant!**\n\n"
+            "I am an AI veterinary assistant specialized in cattle health and bovine disease management.\n\n"
+            "**How I can help you:**\n"
+            "- 🦠 **External Diseases:** Lumpy Skin Disease (LSD), Foot and Mouth Disease (FMD), Udder Mastitis.\n"
+            "- 🫀 **Internal Diseases:** Bloating (Ruminal Tympany), Milk Fever (Hypocalcemia), Ketosis.\n"
+            "- 🌾 **Herd Care & Nutrition:** Feeding guidelines, vaccination schedules, and emergency advice.\n\n"
+            "Please ask me any cattle health or disease question to get started!"
+        )
 
     # Off-topic triggers to reject immediately
     off_topic_indicators = [
