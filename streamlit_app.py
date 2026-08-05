@@ -1,10 +1,9 @@
 import subprocess
 import sys
 import os
+import re
 
 # ─── Streamlit Cloud Fix: Force headless OpenCV ───
-# ultralytics pulls in opencv-python (full) which needs libGL.so.1
-# Streamlit Cloud doesn't have that system library, so we swap to headless
 if os.path.exists("/mount/src"):  # Only runs on Streamlit Cloud
     subprocess.run(
         [sys.executable, "-m", "pip", "install",
@@ -17,6 +16,8 @@ from ultralytics import YOLO
 from PIL import Image
 import tempfile
 import time
+import pickle
+import pandas as pd
 
 # ─── Page Configuration ───
 st.set_page_config(
@@ -26,26 +27,62 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# ─── Custom CSS ───
-st.markdown("""
-<style>
-    /* ── Global ── */
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+# ─── Helper for Clean HTML Rendering (Strips Markdown Code-Block Indentation) ───
+def render_html(html_str):
+    cleaned = re.sub(r'^[ \t]+', '', html_str, flags=re.MULTILINE)
+    st.markdown(cleaned.strip(), unsafe_allow_html=True)
 
+
+# ─── Luxury Dark Green & White Design System (CSS) ───
+render_html("""
+<style>
+    /* ── Google Fonts ── */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap');
+
+    /* ── Global Styles ── */
     html, body, [class*="st-"] {
         font-family: 'Inter', sans-serif;
     }
 
     .stApp {
-        background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+        background: linear-gradient(135deg, #0E2B23 0%, #15392F 50%, #0E2B23 100%);
+        background-attachment: fixed;
     }
 
-    /* Hide default Streamlit elements */
+    /* Hide default Streamlit overhead */
     #MainMenu, header, footer { visibility: hidden; }
-    .block-container { padding-top: 2rem; max-width: 1200px; }
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 4rem;
+        max-width: 1200px;
+    }
 
-    /* ── Hero Section ── */
+    /* ── Top Navigation Bar ── */
+    .top-nav {
+        background: rgba(14, 43, 35, 0.85);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        padding: 0.75rem 1.5rem;
+        margin-bottom: 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .nav-brand {
+        font-family: 'Manrope', sans-serif;
+        font-weight: 800;
+        font-size: 1.35rem;
+        color: #FFFFFF;
+    }
+    .nav-brand span {
+        color: #34D399;
+    }
+
+    /* ── Hero Titles ── */
     .hero-title {
+        font-family: 'Manrope', sans-serif;
         text-align: center;
         font-size: 2.8rem;
         font-weight: 800;
@@ -61,169 +98,231 @@ st.markdown("""
         font-weight: 400;
     }
 
-    /* ── Disease Cards ── */
-    .disease-card {
-        background: rgba(30, 41, 59, 0.8);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 1.25rem;
-        padding: 2.5rem 2rem;
-        text-align: center;
-        transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-        cursor: pointer;
-        min-height: 280px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
+    /* ── Seamless Equal-Height White Card Wrapper ── */
+    .home-card-top {
+        background: #FFFFFF !important;
+        border: 1px solid #E5E7EB !important;
+        border-bottom: none !important;
+        border-top-left-radius: 24px !important;
+        border-top-right-radius: 24px !important;
+        padding: 2.5rem 2rem 1rem 2rem !important;
+        text-align: center !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        height: 240px !important;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1) !important;
+        box-sizing: border-box !important;
     }
-    .disease-card:hover {
-        border-color: #3b82f6;
-        transform: translateY(-6px);
-        box-shadow: 0 20px 40px -12px rgba(59, 130, 246, 0.2);
+
+    .home-card-bottom {
+        background: #FFFFFF !important;
+        border: 1px solid #E5E7EB !important;
+        border-top: none !important;
+        border-bottom-left-radius: 24px !important;
+        border-bottom-right-radius: 24px !important;
+        padding: 0 2rem 2.25rem 2rem !important;
+        box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.15) !important;
+        box-sizing: border-box !important;
     }
+
     .card-icon {
         font-size: 3.5rem;
         margin-bottom: 1rem;
+        line-height: 1;
     }
     .card-title {
+        font-family: 'Manrope', sans-serif;
         font-size: 1.5rem;
         font-weight: 700;
-        color: #f1f5f9;
+        color: #0F172A;
         margin-bottom: 0.5rem;
     }
     .card-desc {
         font-size: 0.95rem;
-        color: #94a3b8;
+        color: #4B5563;
         line-height: 1.6;
     }
 
-    /* ── Detection Page ── */
+    /* ── Category Screen Cards ── */
+    .cat-card-top {
+        background: #FFFFFF !important;
+        border: 1px solid #E5E7EB !important;
+        border-bottom: none !important;
+        border-top-left-radius: 24px !important;
+        border-top-right-radius: 24px !important;
+        padding: 2.25rem 1.5rem 1rem 1.5rem !important;
+        text-align: center !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        height: 250px !important;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1) !important;
+        box-sizing: border-box !important;
+    }
+
+    .cat-card-bottom {
+        background: #FFFFFF !important;
+        border: 1px solid #E5E7EB !important;
+        border-top: none !important;
+        border-bottom-left-radius: 24px !important;
+        border-bottom-right-radius: 24px !important;
+        padding: 0 1.5rem 2rem 1.5rem !important;
+        box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.15) !important;
+        box-sizing: border-box !important;
+    }
+
+    /* ── Buttons ── */
+    .stButton > button {
+        width: 100%;
+        background: linear-gradient(135deg, #10B981 0%, #059669 100%) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 16px !important;
+        padding: 0.85rem 1.5rem !important;
+        font-size: 1rem !important;
+        font-weight: 700 !important;
+        font-family: 'Manrope', sans-serif !important;
+        transition: all 0.3s ease !important;
+        box-shadow: 0 4px 15px rgba(16, 185, 129, 0.35) !important;
+        cursor: pointer !important;
+    }
+    .stButton > button:hover {
+        transform: translateY(-2px) scale(1.01) !important;
+        box-shadow: 0 8px 25px rgba(16, 185, 129, 0.5) !important;
+    }
+
+    .sec-button button {
+        background: rgba(255, 255, 255, 0.08) !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        color: #F8FAFC !important;
+        box-shadow: none !important;
+        font-weight: 600 !important;
+    }
+    .sec-button button:hover {
+        background: rgba(255, 255, 255, 0.16) !important;
+        border-color: #34D399 !important;
+        color: #34D399 !important;
+    }
+
+    /* ── Header Detection Texts ── */
     .detect-header {
         text-align: center;
         font-size: 2rem;
         font-weight: 700;
         color: #f8fafc;
         margin-bottom: 0.25rem;
+        font-family: 'Manrope', sans-serif;
     }
     .detect-sub {
         text-align: center;
-        color: #64748b;
+        color: #94a3b8;
         font-size: 1rem;
         margin-bottom: 2rem;
     }
 
-    /* ── Results ── */
+    /* ── White Stat Cards ── */
+    .stat-box {
+        background: #FFFFFF;
+        border: 1px solid #E5E7EB;
+        border-radius: 16px;
+        padding: 1.25rem;
+        text-align: center;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+    .stat-value {
+        font-size: 1.65rem;
+        font-weight: 800;
+        color: #059669;
+        font-family: 'Manrope', sans-serif;
+    }
+    .stat-label {
+        font-size: 0.8rem;
+        color: #6B7280;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 600;
+        margin-top: 0.25rem;
+    }
+
+    /* ── File Uploader Override ── */
+    [data-testid="stFileUploader"] {
+        background: #FFFFFF !important;
+        border: 2px dashed #10B981 !important;
+        border-radius: 20px !important;
+        padding: 1.5rem !important;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.06) !important;
+    }
+    [data-testid="stFileUploader"] label {
+        color: #0F172A !important;
+        font-weight: 700 !important;
+    }
+
+    /* ── Questionnaire White Cards ── */
+    .q-card-white {
+        background: #FFFFFF;
+        border: 1px solid #E5E7EB;
+        border-radius: 18px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+    }
+
+    /* ── Results Box ── */
     .result-box {
-        border-radius: 1rem;
+        border-radius: 20px;
         padding: 1.75rem;
         margin-top: 1.5rem;
-        animation: fadeUp 0.5s ease;
-    }
-    .result-positive {
-        background: rgba(239, 68, 68, 0.12);
-        border: 1px solid rgba(239, 68, 68, 0.4);
-    }
-    .result-negative {
-        background: rgba(16, 185, 129, 0.12);
-        border: 1px solid rgba(16, 185, 129, 0.4);
+        background: #FFFFFF;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+        color: #1F2937;
     }
     .result-title {
         font-size: 1.35rem;
         font-weight: 700;
         margin-bottom: 0.5rem;
+        font-family: 'Manrope', sans-serif;
     }
-    .result-positive .result-title { color: #f87171; }
-    .result-negative .result-title { color: #34d399; }
+    .result-positive .result-title { color: #DC2626; }
+    .result-negative .result-title { color: #059669; }
     .result-advice {
-        color: #cbd5e1;
+        color: #374151;
         font-size: 0.95rem;
         line-height: 1.7;
     }
     .confidence-badge {
         display: inline-block;
-        padding: 0.3rem 1rem;
+        padding: 0.35rem 1rem;
         border-radius: 50px;
         font-size: 0.85rem;
-        font-weight: 600;
-        margin-top: 0.75rem;
+        font-weight: 700;
+        margin-top: 0.5rem;
     }
     .result-positive .confidence-badge {
-        background: rgba(239, 68, 68, 0.15);
-        color: #fca5a5;
+        background: #FEE2E2;
+        color: #991B1B;
     }
     .result-negative .confidence-badge {
-        background: rgba(16, 185, 129, 0.15);
-        color: #6ee7b7;
+        background: #D1FAE5;
+        color: #065F46;
     }
 
-    @keyframes fadeUp {
-        from { opacity: 0; transform: translateY(15px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-
-    /* ── Buttons ── */
-    .stButton > button {
-        width: 100%;
-        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-        color: white;
-        border: none;
-        border-radius: 0.75rem;
-        padding: 0.85rem 1.5rem;
-        font-size: 1rem;
-        font-weight: 600;
-        font-family: 'Inter', sans-serif;
-        transition: all 0.3s ease;
-    }
-    .stButton > button:hover {
-        transform: scale(1.02);
-        box-shadow: 0 8px 25px -8px rgba(59, 130, 246, 0.5);
-    }
-
-    /* ── Back button ── */
-    .back-link {
-        color: #64748b;
-        text-decoration: none;
-        font-weight: 500;
-        font-size: 0.95rem;
-        transition: color 0.2s;
-    }
-    .back-link:hover { color: #3b82f6; }
-
-    /* ── Upload area ── */
-    [data-testid="stFileUploader"] {
-        background: rgba(15, 23, 42, 0.5);
-        border: 2px dashed rgba(255, 255, 255, 0.12);
-        border-radius: 1rem;
-        padding: 1rem;
-    }
-    [data-testid="stFileUploader"]:hover {
-        border-color: rgba(59, 130, 246, 0.4);
-    }
-
-    /* ── Divider ── */
-    hr { border-color: rgba(255, 255, 255, 0.06) !important; }
-
-    /* ── Stats ── */
-    .stat-box {
-        background: rgba(30, 41, 59, 0.6);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        border-radius: 0.75rem;
-        padding: 1.25rem;
-        text-align: center;
-    }
-    .stat-value {
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: #3b82f6;
-    }
-    .stat-label {
-        font-size: 0.8rem;
-        color: #64748b;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
+    hr { border-color: rgba(255, 255, 255, 0.1) !important; }
 </style>
-""", unsafe_allow_html=True)
+""")
+
+
+# ─── Navigation Header Component ───
+def render_navbar():
+    render_html("""
+    <div class="top-nav">
+        <div class="nav-brand">
+            🐄 <span>CattleSense</span>
+        </div>
+    </div>
+    """)
 
 
 # ─── Model Loading ───
@@ -238,45 +337,141 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 LUMPY_MODEL_PATH = os.path.join(BASE_DIR, "runs", "lumpy_classification", "weights", "best.pt")
 FMD_MODEL_PATH = os.path.join(BASE_DIR, "runs", "fmd_project", "fmd_classification", "weights", "best.pt")
 UDDER_MODEL_PATH = os.path.join(BASE_DIR, "runs", "classify", "runs", "udder_project", "udder_classification2", "weights", "best.pt")
+BLOAT_MODEL_PATH = os.path.join(BASE_DIR, "runs", "internal_models", "bloat_model.pkl")
+MILK_FEVER_MODEL_PATH = os.path.join(BASE_DIR, "runs", "internal_models", "milk_fever_model.pkl")
+KETOSIS_MODEL_PATH = os.path.join(BASE_DIR, "runs", "internal_models", "ketosis_model.pkl")
 
 
 # ─── Expert Advice (Local — no external API needed) ───
-def get_expert_advice(condition_name, is_healthy):
-    """Generate expert veterinary advice based on the detected condition."""
+def get_expert_advice(condition_name, is_healthy, confidence=0.0):
+    """Generate expert veterinary advice based on the detected condition and severity."""
+    if confidence >= 0.85:
+        severity = "Severe"
+    elif confidence >= 0.65:
+        severity = "Moderate"
+    else:
+        severity = "Mild"
+
     if is_healthy:
-        return (
-            "The animal appears to be in good health based on the visual examination. "
-            "Continue routine monitoring, maintain vaccination schedules, and ensure "
-            "proper nutrition and hygiene. Regular veterinary check-ups are recommended "
-            "to keep the herd healthy."
-        )
+        if confidence >= 0.80:
+            return (
+                "The animal appears to be in excellent health with high confidence. "
+                "Continue routine monitoring, maintain vaccination schedules, and ensure "
+                "proper nutrition and hygiene."
+            )
+        else:
+            return (
+                "The animal is likely healthy, but confidence is moderate. "
+                "Monitor closely for any developing symptoms over the next 48 hours, "
+                "and ensure regular veterinary check-ups to keep the herd healthy."
+            )
 
     if "Lumpy" in condition_name:
-        return (
-            "Lumpy Skin Disease (LSD) symptoms have been detected. Immediately isolate "
-            "the affected animal from the rest of the herd to prevent spread. Contact your "
-            "local veterinary authority for confirmation and treatment. LSD is transmitted "
-            "by biting insects — use insect repellents and control vectors around the farm. "
-            "Supportive care includes wound management and anti-inflammatory medication "
-            "as prescribed by your veterinarian."
-        )
+        if severity == "Severe":
+            return (
+                "CRITICAL: Severe Lumpy Skin Disease (LSD) symptoms detected. Immediate quarantine "
+                "and veterinary intervention are required. Implement strict insect vector control and provide "
+                "supportive care like wound management and anti-inflammatory medication."
+            )
+        elif severity == "Moderate":
+            return (
+                "Clear symptoms of Lumpy Skin Disease (LSD) have been detected. Immediately isolate "
+                "the affected animal to prevent spread. Contact your local veterinary authority for confirmation. "
+                "LSD is transmitted by biting insects — use insect repellents."
+            )
+        else:
+            return (
+                "Potential early signs of Lumpy Skin Disease detected. Isolate the animal and monitor closely. "
+                "Bug control is critical. Contact a vet if symptoms progress."
+            )
+            
     elif "Foot" in condition_name:
-        return (
-            "Foot and Mouth Disease (FMD) symptoms have been detected. This is a highly "
-            "contagious viral disease. Quarantine the affected animal immediately and notify "
-            "your local veterinary services — FMD is a reportable disease in most countries. "
-            "Do not move animals in or out of the premises. Disinfect all equipment, clothing, "
-            "and vehicles. Provide soft feed and clean water to the affected animal. Follow "
-            "your veterinarian's guidance on treatment and vaccination of the herd."
-        )
+        if severity == "Severe":
+            return (
+                "CRITICAL: Severe and undeniable Foot and Mouth Disease (FMD) detected. High risk of herd infection. "
+                "Absolute lockdown of premises required immediately. Contact government veterinary authorities urgently."
+            )
+        elif severity == "Moderate":
+            return (
+                "Foot and Mouth Disease (FMD) symptoms have been detected. This is a highly "
+                "contagious viral disease. Quarantine the affected animal immediately and notify "
+                "your local veterinary services. Do not move animals in or out of the premises."
+            )
+        else:
+            return (
+                "Potential early Foot and Mouth Disease (FMD) signs. Isolate immediately and observe. "
+                "Do not allow movement off the farm. Provide soft feed and clean water."
+            )
+            
     elif "Mastitis" in condition_name or "Udder" in condition_name:
-        return (
-            "Bovine Mastitis or Udder Disease has been detected. This bacterial infection "
-            "causes inflammation of the mammary gland and udder tissue. Isolate the cow "
-            "to prevent spreading during milking. Contact your veterinarian for a culture test "
-            "to determine the specific bacteria and the appropriate antibiotic treatment. "
-            "Ensure milking equipment is thoroughly cleaned and sanitized."
-        )
+        if severity == "Severe":
+            return (
+                "CRITICAL: Severe Udder Disease / Mastitis detected with high inflammation. Stop milking this cow "
+                "with shared equipment immediately. Urgent antibiotic treatment is likely necessary."
+            )
+        elif severity == "Moderate":
+            return (
+                "Bovine Mastitis or Udder Disease has been detected. Isolate the cow "
+                "to prevent spreading during milking. Contact your veterinarian for a culture test "
+                "to determine the specific bacteria and the appropriate antibiotic treatment."
+            )
+        else:
+            return (
+                "Mild signs of Bovine Mastitis. Ensure thorough cleaning of milking equipment, "
+                "monitor the cow's milk output, and maintain excellent hygiene."
+            )
+            
+    elif "Bloat" in condition_name:
+        if severity == "Severe":
+            return (
+                "CRITICAL EMERGENCY: Severe Bloat (Ruminal Tympany) is a life-threatening emergency! Immediate veterinary action is required. "
+                "Relieving gas pressure via a stomach tube or trocar may be necessary to prevent suffocation."
+            )
+        elif severity == "Moderate":
+            return (
+                "Bloat (Ruminal Tympany) is present. Do not allow the cow to lie down; keep it moving if possible. "
+                "Call a veterinarian immediately for treatment."
+            )
+        else:
+            return (
+                "Mild Bloat detected. Keep the cow moving and observe closely. Do not feed legumes or concentrate feed "
+                "until symptoms completely subside."
+            )
+            
+    elif "Milk Fever" in condition_name:
+        if severity == "Severe":
+            return (
+                "CRITICAL EMERGENCY: Severe Milk Fever (downer cow) detected. Immediate treatment with intravenous "
+                "calcium borogluconate by a veterinarian is critical. Prop the cow up in a sternal sitting position to prevent pneumonia."
+            )
+        elif severity == "Moderate":
+            return (
+                "Milk Fever (Hypocalcemia) detected. The cow is likely weak and struggling. Do not attempt to drench. "
+                "Keep warm and call a vet for immediate calcium treatment."
+            )
+        else:
+            return (
+                "Mild signs of Milk Fever. The cow may be wobbly but standing. Oral calcium supplementation "
+                "may be sufficient, but consult your vet immediately."
+            )
+            
+    elif "Ketosis" in condition_name:
+        if severity == "Severe":
+            return (
+                "CRITICAL EMERGENCY: Severe Ketosis (Acetonemia) detected. The cow is likely showing severe neurological signs or total feed refusal. "
+                "Immediate intravenous glucose therapy by a veterinarian is required."
+            )
+        elif severity == "Moderate":
+            return (
+                "Ketosis detected. The cow is losing condition and milk production is dropping. "
+                "Consult a veterinarian. Treatment usually involves oral propylene glycol or intravenous dextrose."
+            )
+        else:
+            return (
+                "Mild or early signs of Ketosis detected. Closely monitor feed intake and adjust the diet to ensure adequate energy. "
+                "Consider oral energy supplements."
+            )
+            
     else:
         return (
             "An abnormal condition has been detected. Please isolate the animal as a "
@@ -316,34 +511,23 @@ def run_prediction(model, image_path, disease_type):
             pretty_name = "Healthy — No Udder Disease Found"
             is_healthy = True
 
-    probs_dict = {result.names[i]: float(result.probs.data[i]) for i in range(len(result.names))}
-    
-    # Calculate healthy vs unhealthy probabilities
-    healthy_prob = 0.0
-    unhealthy_prob = 0.0
-    for c_name, prob in probs_dict.items():
-        c_name_lower = c_name.lower()
-        if "normal" in c_name_lower or "0" in c_name_lower:
-            healthy_prob += prob
-        else:
-            unhealthy_prob += prob
-            
-    # Normalize just in case
-    total = healthy_prob + unhealthy_prob
-    if total > 0:
-        healthy_prob /= total
-        unhealthy_prob /= total
+    # Align probabilities directly with prediction confidence for 100% exact match
+    if is_healthy:
+        healthy_prob = top1_conf
+        unhealthy_prob = max(0.0, 1.0 - healthy_prob)
+    else:
+        unhealthy_prob = top1_conf
+        healthy_prob = max(0.0, 1.0 - unhealthy_prob)
 
-    advice = get_expert_advice(pretty_name, is_healthy)
+    advice = get_expert_advice(pretty_name, is_healthy, top1_conf)
     return pretty_name, top1_conf, is_healthy, advice, healthy_prob, unhealthy_prob
 
 
-# ─── Session State ───
+# ─── Session State Routing ───
 if "page" not in st.session_state:
     st.session_state.page = "home"
 if "disease" not in st.session_state:
     st.session_state.disease = None
-
 
 def go_home():
     st.session_state.page = "home"
@@ -361,138 +545,385 @@ def go_detect(disease):
     st.session_state.page = "detect"
     st.session_state.disease = disease
 
+def go_detect_internal(disease):
+    st.session_state.page = "detect_internal"
+    st.session_state.disease = disease
+
 
 # ═══════════════════════════════════════════════
-#                   HOME PAGE
+#             PERFECTLY SYMMETRICAL HOME PAGE
 # ═══════════════════════════════════════════════
 def render_home():
-    st.markdown('<div class="hero-title">🐄 CattleSense</div>', unsafe_allow_html=True)
-    st.markdown('<div class="hero-subtitle">Select a category to begin</div>', unsafe_allow_html=True)
+    render_navbar()
 
-    col1, col2 = st.columns([1, 1])
+    render_html('<div class="hero-title">🐄 CattleSense</div>')
+    render_html('<div class="hero-subtitle">Select a category to begin</div>')
+
+    col1, col2 = st.columns(2, gap="large")
 
     with col1:
-        st.markdown("""
-        <div class="disease-card">
+        render_html("""
+        <div class="home-card-top">
             <div class="card-icon">👁️</div>
             <div class="card-title">External Diseases</div>
             <div class="card-desc">Examine cattle for external diseases like FMD, LSD, and Udder Disease using Computer Vision</div>
         </div>
-        """, unsafe_allow_html=True)
+        <div class="home-card-bottom">
+        """)
         if st.button("Explore External Diseases", key="btn_ext"):
             go_external()
             st.rerun()
+        render_html('</div>')
 
     with col2:
-        st.markdown("""
-        <div class="disease-card">
+        render_html("""
+        <div class="home-card-top">
             <div class="card-icon">🫀</div>
             <div class="card-title">Internal Diseases</div>
             <div class="card-desc">Diagnose internal conditions based on clinical symptoms and physiological data</div>
         </div>
-        """, unsafe_allow_html=True)
+        <div class="home-card-bottom">
+        """)
         if st.button("Explore Internal Diseases", key="btn_int"):
             go_internal()
             st.rerun()
+        render_html('</div>')
 
 
 # ═══════════════════════════════════════════════
 #             EXTERNAL DISEASES PAGE
 # ═══════════════════════════════════════════════
 def render_external():
-    if st.button("← Back to Categories", key="back_to_home_ext"):
-        go_home()
-        st.rerun()
+    render_navbar()
 
-    st.markdown('<div class="hero-title">🐄 External Diseases</div>', unsafe_allow_html=True)
-    st.markdown('<div class="hero-subtitle">Select a condition to begin the examination</div>', unsafe_allow_html=True)
+    col_back, col_empty = st.columns([1.5, 4.5])
+    with col_back:
+        render_html('<div class="sec-button">')
+        if st.button("← Back to Categories", key="back_to_home_ext"):
+            go_home()
+            st.rerun()
+        render_html('</div>')
 
-    col1, col2, col3 = st.columns([1, 1, 1])
+    render_html('<div class="hero-title">🐄 External Diseases</div>')
+    render_html('<div class="hero-subtitle">Select a condition to begin the examination</div>')
+
+    col1, col2, col3 = st.columns(3, gap="medium")
 
     with col1:
-        st.markdown("""
-        <div class="disease-card">
+        render_html("""
+        <div class="cat-card-top">
             <div class="card-icon">🦶</div>
             <div class="card-title">Foot and Mouth Disease</div>
             <div class="card-desc">Examine cattle for vesicular lesions on the mouth, tongue, hooves, and teats</div>
         </div>
-        """, unsafe_allow_html=True)
+        <div class="cat-card-bottom">
+        """)
         if st.button("Start FMD Examination", key="btn_fmd"):
             go_detect("fmd")
             st.rerun()
+        render_html('</div>')
 
     with col2:
-        st.markdown("""
-        <div class="disease-card">
+        render_html("""
+        <div class="cat-card-top">
             <div class="card-icon">🔬</div>
             <div class="card-title">Lumpy Skin Disease</div>
             <div class="card-desc">Analyze cattle skin surfaces for firm nodules, lesions, and pathological changes</div>
         </div>
-        """, unsafe_allow_html=True)
+        <div class="cat-card-bottom">
+        """)
         if st.button("Start LSD Examination", key="btn_lsd"):
             go_detect("lumpy")
             st.rerun()
+        render_html('</div>')
 
     with col3:
-        st.markdown("""
-        <div class="disease-card">
+        render_html("""
+        <div class="cat-card-top">
             <div class="card-icon">🐄</div>
             <div class="card-title">Udder Disease</div>
             <div class="card-desc">Inspect bovine udders for inflammation, swelling, and signs of mastitis</div>
         </div>
-        """, unsafe_allow_html=True)
+        <div class="cat-card-bottom">
+        """)
         if st.button("Start Udder Examination", key="btn_udder"):
             go_detect("udder")
             st.rerun()
+        render_html('</div>')
 
     # ── Stats Section ──
-    st.markdown("---")
-    s1, s2, s3, s4 = st.columns(4)
+    render_html("<br><hr><br>")
+    s1, s2, s3, s4 = st.columns(4, gap="medium")
     with s1:
-        st.markdown("""
+        render_html("""
         <div class="stat-box">
             <div class="stat-value">323</div>
             <div class="stat-label">Lumpy Skin Samples</div>
         </div>
-        """, unsafe_allow_html=True)
+        """)
     with s2:
-        st.markdown("""
+        render_html("""
         <div class="stat-box">
             <div class="stat-value">212</div>
             <div class="stat-label">FMD Samples</div>
         </div>
-        """, unsafe_allow_html=True)
+        """)
     with s3:
-        st.markdown("""
+        render_html("""
         <div class="stat-box">
             <div class="stat-value">120</div>
             <div class="stat-label">Udder Samples</div>
         </div>
-        """, unsafe_allow_html=True)
+        """)
     with s4:
-        st.markdown("""
+        render_html("""
         <div class="stat-box">
             <div class="stat-value">547</div>
             <div class="stat-label">Healthy Baselines</div>
         </div>
-        """, unsafe_allow_html=True)
+        """)
 
 
 # ═══════════════════════════════════════════════
 #             INTERNAL DISEASES PAGE
 # ═══════════════════════════════════════════════
 def render_internal():
-    if st.button("← Back to Categories", key="back_to_home_int"):
-        go_home()
-        st.rerun()
+    render_navbar()
 
-    st.markdown('<div class="hero-title">🫀 Internal Diseases</div>', unsafe_allow_html=True)
-    st.markdown('<div class="hero-subtitle">Internal disease diagnosis module</div>', unsafe_allow_html=True)
-    st.info("The internal diseases module is currently under development. Stay tuned for updates!")
+    col_back, col_empty = st.columns([1.5, 4.5])
+    with col_back:
+        render_html('<div class="sec-button">')
+        if st.button("← Back to Categories", key="back_to_home_int"):
+            go_home()
+            st.rerun()
+        render_html('</div>')
+
+    render_html('<div class="hero-title">🫀 Internal Diseases</div>')
+    render_html('<div class="hero-subtitle">Diagnose conditions via clinical symptom questionnaires</div>')
+
+    col1, col2, col3 = st.columns(3, gap="medium")
+
+    with col1:
+        render_html("""
+        <div class="cat-card-top">
+            <div class="card-icon">🎈</div>
+            <div class="card-title">Bloating (Ruminal Tympany)</div>
+            <div class="card-desc">Diagnose ruminal distension through clinical signs and feeding history</div>
+        </div>
+        <div class="cat-card-bottom">
+        """)
+        if st.button("Start Bloating Examination", key="btn_bloat"):
+            go_detect_internal("bloat")
+            st.rerun()
+        render_html('</div>')
+
+    with col2:
+        render_html("""
+        <div class="cat-card-top">
+            <div class="card-icon">🥛</div>
+            <div class="card-title">Milk Fever</div>
+            <div class="card-desc">Detect metabolic hypocalcemia related to calving and muscle weakness</div>
+        </div>
+        <div class="cat-card-bottom">
+        """)
+        if st.button("Start Milk Fever Examination", key="btn_milk_fever"):
+            go_detect_internal("milk_fever")
+            st.rerun()
+        render_html('</div>')
+
+    with col3:
+        render_html("""
+        <div class="cat-card-top">
+            <div class="card-icon">📉</div>
+            <div class="card-title">Ketosis (Acetonemia)</div>
+            <div class="card-desc">Detect energy metabolism disorders common in early lactation dairy cows</div>
+        </div>
+        <div class="cat-card-bottom">
+        """)
+        if st.button("Start Ketosis Examination", key="btn_ketosis"):
+            go_detect_internal("ketosis")
+            st.rerun()
+        render_html('</div>')
 
 
 # ═══════════════════════════════════════════════
-#               DETECTION PAGE
+#             DETECTION INTERNAL PAGE
+# ═══════════════════════════════════════════════
+@st.cache_resource
+def load_internal_model(model_path):
+    if os.path.exists(model_path):
+        with open(model_path, "rb") as f:
+            return pickle.load(f)
+    return None
+
+def render_detect_internal():
+    disease = st.session_state.disease
+    if disease == "bloat":
+        display_name = "Bloating (Ruminal Tympany)"
+        model_path = BLOAT_MODEL_PATH
+        prediction_text_positive = "Bloating (Ruminal Tympany) Detected"
+        prediction_text_negative = "Healthy — No Bloat Symptoms Found"
+        unhealthy_class_name = "Bloat"
+        questions = [
+            ("q1_left_side_swollen", "1. Is the left side of the cow's abdomen swollen?", ["No", "Yes"]),
+            ("q2_sudden_swelling", "2. Did the swelling appear suddenly (within a few hours)?", ["No", "Yes"]),
+            ("q3_difficulty_breathing", "3. Is the cow having difficulty breathing or breathing rapidly?", ["No", "Yes"]),
+            ("q4_stopped_eating", "4. Has the cow stopped eating or lost its appetite?", ["No", "Yes"]),
+            ("q5_stopped_chewing_cud", "5. Has the cow stopped chewing cud (rumination)?", ["No", "Yes"]),
+            ("q6_restless_kicking", "6. Is the cow restless, repeatedly standing up and lying down, or kicking at its belly?", ["No", "Yes"]),
+            ("q7_grazed_lush_pasture", "7. Has the cow grazed on lush green pasture or legumes (such as alfalfa or clover) in the last 24 hours?", ["No", "Yes"]),
+            ("q8_large_amount_grain", "8. Has the cow recently been given a large amount of grain or concentrate feed?", ["No", "Yes"]),
+            ("q9_drooling_stretching_neck", "9. Is the cow drooling excessively or stretching its neck with its mouth open?", ["No", "Yes"]),
+            ("q10_swelling_left_side_only", "10. Is the swelling mainly on the left side rather than the whole abdomen?", ["No", "Yes"])
+        ]
+    elif disease == "milk_fever":
+        display_name = "Milk Fever (Hypocalcemia)"
+        model_path = MILK_FEVER_MODEL_PATH
+        prediction_text_positive = "Milk Fever Detected"
+        prediction_text_negative = "Healthy — No Milk Fever Symptoms Found"
+        unhealthy_class_name = "Milk Fever"
+        questions = [
+            ("q1_calved_72h", "1. Has the cow calved within the last 72 hours?", ["No", "Yes"]),
+            ("q2_unable_to_stand", "2. Is the cow unable to stand or having difficulty getting up?", ["No", "Yes"]),
+            ("q3_cold_ears_legs", "3. Are the cow’s ears or legs unusually cold to touch?", ["No", "Yes"]),
+            ("q4_muscle_tremors", "4. Is the cow showing muscle tremors, twitching, or shaking?", ["No", "Yes"]),
+            ("q5_walking_unsteadily", "5. Is the cow walking unsteadily, stiffly, or showing weakness in the legs?", ["No", "Yes"]),
+            ("q6_head_turned", "6. Is the cow lying down with its head turned toward the flank or chest?", ["No", "Yes"]),
+            ("q7_lost_appetite", "7. Has the cow suddenly lost appetite or stopped eating?", ["No", "Yes"]),
+            ("q8_stopped_cud", "8. Has the cow reduced or stopped chewing cud?", ["No", "Yes"]),
+            ("q9_decreased_milk", "9. Has milk production suddenly decreased after calving?", ["No", "Yes"]),
+            ("q10_previous_fever", "10. Has the cow had Milk Fever during a previous calving?", ["No", "Unknown", "Yes"])
+        ]
+    elif disease == "ketosis":
+        display_name = "Ketosis (Acetonemia)"
+        model_path = KETOSIS_MODEL_PATH
+        prediction_text_positive = "Ketosis Detected"
+        prediction_text_negative = "Healthy — No Ketosis Symptoms Found"
+        unhealthy_class_name = "Ketosis"
+        questions = [
+            ("q1_recently_calved", "1. Has the cow recently calved (within the last 2–6 weeks)?", ["No", "Yes"]),
+            ("q2_lost_appetite_concentrate", "2. Has the cow lost its appetite, especially refusing concentrate feed?", ["No", "Yes"]),
+            ("q3_milk_decreased", "3. Has the cow's milk production decreased suddenly?", ["No", "Yes"]),
+            ("q4_losing_weight", "4. Is the cow losing weight or body condition despite being fed?", ["No", "Yes"]),
+            ("q5_dull_weak", "5. Does the cow appear dull, weak, or less active than usual?", ["No", "Yes"]),
+            ("q6_sweet_acetone_breath", "6. Does the cow have a sweet or acetone-like smell on its breath or milk?", ["No", "Yes"]),
+            ("q7_chewing_cud_less", "7. Is the cow chewing cud less frequently than normal?", ["No", "Yes"]),
+            ("q8_abnormal_behavior", "8. Is the cow showing abnormal behavior such as excessive licking, aimless walking, or nervousness?", ["No", "Yes"]),
+            ("q9_eaten_poorly_days", "9. Has the cow eaten poorly for the past 2–3 days?", ["No", "Yes"]),
+            ("q10_high_producing", "10. Is the cow a high milk-producing dairy cow?", ["No", "Yes"])
+        ]
+
+    render_navbar()
+
+    col_back, col_empty = st.columns([1.5, 4.5])
+    with col_back:
+        render_html('<div class="sec-button">')
+        if st.button("← Back to Internal Diseases", key="back_btn_int"):
+            go_internal()
+            st.rerun()
+        render_html('</div>')
+
+    render_html('<div class="detect-header">Diagnostic Center</div>')
+    render_html(f'<div class="detect-sub">Examining for: {display_name}</div>')
+
+    model = load_internal_model(model_path)
+    if model is None:
+        st.error(f"⚠️ The {display_name} model is not yet available.")
+        return
+
+    render_html('<div style="background: #FFFFFF; padding: 2rem; border-radius: 20px; border: 1px solid #E5E7EB; margin-bottom: 2rem; box-shadow: 0 10px 25px rgba(0,0,0,0.08);">')
+    st.markdown("<h3 style='color: #0F172A; margin-bottom: 1.5rem; font-family: Manrope;'>Clinical Questionnaire</h3>", unsafe_allow_html=True)
+    
+    answers = {}
+    for key, q_text, options in questions:
+        render_html(f"<div style='color: #374151; font-weight: 600; font-size: 1.02rem; margin-bottom: 0.5rem;'>{q_text}</div>")
+        ans = st.radio("Select answer:", options=options, key=key, horizontal=True, label_visibility="collapsed")
+        if ans == "Yes":
+            answers[key] = 2 if len(options) == 3 else 1
+        elif ans == "Unknown":
+            answers[key] = 1
+        else:
+            answers[key] = 0
+        render_html("<hr style='border-color: #E5E7EB; margin: 1rem 0;'>")
+        
+    render_html('</div>')
+
+    if st.button("🔍 Analyze Symptoms", key="run_int_btn"):
+        with st.spinner("Analyzing clinical data..."):
+            df_input = pd.DataFrame([answers])
+            pred_class = model.predict(df_input)[0]
+            probs = model.predict_proba(df_input)[0]
+            probs_dict = dict(zip(model.classes_, probs))
+            
+            is_healthy = (pred_class == "Healthy")
+            confidence = probs_dict.get(pred_class, 0.0)
+            
+            prediction_text = prediction_text_positive if not is_healthy else prediction_text_negative
+            advice = get_expert_advice(prediction_text, is_healthy, confidence)
+            
+            if is_healthy:
+                healthy_prob = confidence
+                unhealthy_prob = max(0.0, 1.0 - healthy_prob)
+            else:
+                unhealthy_prob = confidence
+                healthy_prob = max(0.0, 1.0 - unhealthy_prob)
+
+            result_class = "result-negative" if is_healthy else "result-positive"
+            icon = "✅" if is_healthy else "⚠️"
+
+            render_html(f"""
+            <div class="result-box {result_class}">
+                <div class="result-title">{icon} {prediction_text}</div>
+                <div class="confidence-badge">Confidence: {confidence * 100:.1f}%</div>
+                <hr style="border-color: #E5E7EB; margin: 1rem 0;">
+                <div style="color: #6B7280; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem;">Expert Veterinary Guidance</div>
+                <div class="result-advice">{advice}</div>
+            </div>
+            """)
+            
+            render_html("<br>")
+            st.markdown('<h3 style="color:#f8fafc; font-size:1.25rem; font-family: Manrope;">Health Status Analysis</h3>', unsafe_allow_html=True)
+            
+            healthy_pct = healthy_prob * 100
+            unhealthy_pct = unhealthy_prob * 100
+
+            graph_html = f"""
+            <div style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 20px; padding: 1.75rem; margin-top: 0.5rem; box-shadow: 0 8px 24px rgba(0,0,0,0.08);">
+                <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
+                    <div style="flex: 1; background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 14px; padding: 1.1rem; text-align: center;">
+                        <div style="font-size: 0.82rem; color: #047857; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Healthy (No Symptoms)</div>
+                        <div style="font-family: Manrope; font-size: 2rem; font-weight: 800; color: #059669; margin-top: 0.25rem;">{healthy_pct:.1f}%</div>
+                    </div>
+                    <div style="flex: 1; background: #FEF2F2; border: 1px solid #FECACA; border-radius: 14px; padding: 1.1rem; text-align: center;">
+                        <div style="font-size: 0.82rem; color: #B91C1C; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Unhealthy (Disease Symptoms)</div>
+                        <div style="font-family: Manrope; font-size: 2rem; font-weight: 800; color: #DC2626; margin-top: 0.25rem;">{unhealthy_pct:.1f}%</div>
+                    </div>
+                </div>
+                <div style="margin-bottom: 1.25rem;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem; font-size: 0.95rem; font-weight: 700; color: #1F2937;">
+                        <span>🟢 Healthy (No Symptoms)</span>
+                        <span style="color: #059669;">{healthy_pct:.1f}%</span>
+                    </div>
+                    <div style="width: 100%; background: #F3F4F6; border-radius: 8px; height: 16px; overflow: hidden;">
+                        <div style="width: {healthy_pct:.1f}%; background: linear-gradient(90deg, #10B981 0%, #059669 100%); height: 100%; border-radius: 8px;"></div>
+                    </div>
+                </div>
+                <div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem; font-size: 0.95rem; font-weight: 700; color: #1F2937;">
+                        <span>🔴 Unhealthy (Disease Symptoms)</span>
+                        <span style="color: #DC2626;">{unhealthy_pct:.1f}%</span>
+                    </div>
+                    <div style="width: 100%; background: #F3F4F6; border-radius: 8px; height: 16px; overflow: hidden;">
+                        <div style="width: {unhealthy_pct:.1f}%; background: linear-gradient(90deg, #FCA5A5 0%, #EF4444 100%); height: 100%; border-radius: 8px;"></div>
+                    </div>
+                </div>
+            </div>
+            """
+            render_html(graph_html)
+
+
+# ═══════════════════════════════════════════════
+#             DETECTION EXTERNAL PAGE
 # ═══════════════════════════════════════════════
 def render_detect():
     disease = st.session_state.disease
@@ -506,21 +937,24 @@ def render_detect():
         display_name = "Udder Disease (Mastitis)"
         model_path = UDDER_MODEL_PATH
 
-    # Back button
-    if st.button("← Back to External Diseases", key="back_btn"):
-        go_external()
-        st.rerun()
+    render_navbar()
 
-    st.markdown(f'<div class="detect-header">Diagnostic Center</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="detect-sub">Examining for: {display_name}</div>', unsafe_allow_html=True)
+    col_back, col_empty = st.columns([1.5, 4.5])
+    with col_back:
+        render_html('<div class="sec-button">')
+        if st.button("← Back to External Diseases", key="back_btn"):
+            go_external()
+            st.rerun()
+        render_html('</div>')
 
-    # Load model
+    render_html('<div class="detect-header">Diagnostic Center</div>')
+    render_html(f'<div class="detect-sub">Examining for: {display_name}</div>')
+
     model = load_model(model_path)
     if model is None:
         st.error(f"⚠️ The {display_name} model is not yet available. Please ensure training is complete.")
         return
 
-    # ── Upload Section ──
     uploaded_file = st.file_uploader(
         "Upload a sample image for examination",
         type=["jpg", "jpeg", "png", "bmp", "webp"],
@@ -528,33 +962,35 @@ def render_detect():
     )
 
     if uploaded_file is not None:
-        # Show preview
         image = Image.open(uploaded_file)
-        col_img, col_info = st.columns([1.2, 1])
+        col_img, col_info = st.columns([1.2, 1], gap="medium")
 
         with col_img:
             st.image(image, caption="Uploaded Sample", use_container_width=True)
 
         with col_info:
-            st.markdown(f"""
-            <div class="stat-box" style="margin-bottom: 1rem;">
-                <div class="stat-label">File Name</div>
-                <div style="color: #e2e8f0; font-weight: 500;">{uploaded_file.name}</div>
+            render_html(f"""
+            <div style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 18px; padding: 1.5rem; box-shadow: 0 6px 18px rgba(0,0,0,0.06); color: #1F2937;">
+                <div style="font-family: Manrope; font-size: 1.1rem; font-weight: 800; color: #0F172A; margin-bottom: 1rem;">Sample Information</div>
+                <div style="margin-bottom: 0.85rem;">
+                    <div style="font-size: 0.8rem; color: #6B7280; text-transform: uppercase; font-weight: 700;">File Name</div>
+                    <div style="font-weight: 600; color: #0F172A;">{uploaded_file.name}</div>
+                </div>
+                <div style="margin-bottom: 0.85rem;">
+                    <div style="font-size: 0.8rem; color: #6B7280; text-transform: uppercase; font-weight: 700;">Dimensions</div>
+                    <div style="font-weight: 600; color: #0F172A;">{image.width} × {image.height} px</div>
+                </div>
+                <div>
+                    <div style="font-size: 0.8rem; color: #6B7280; text-transform: uppercase; font-weight: 700;">Examining For</div>
+                    <div style="font-weight: 700; color: #059669;">{display_name}</div>
+                </div>
             </div>
-            <div class="stat-box" style="margin-bottom: 1rem;">
-                <div class="stat-label">Dimensions</div>
-                <div style="color: #e2e8f0; font-weight: 500;">{image.width} × {image.height} px</div>
-            </div>
-            <div class="stat-box">
-                <div class="stat-label">Examining For</div>
-                <div style="color: #3b82f6; font-weight: 600;">{display_name}</div>
-            </div>
-            """, unsafe_allow_html=True)
+            """)
 
-        # Run examination
+        render_html("<br>")
+
         if st.button("🔍 Run Examination", key="run_btn"):
             with st.spinner("Analyzing sample..."):
-                # Save uploaded file temporarily
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
                     tmp.write(uploaded_file.getvalue())
                     tmp_path = tmp.name
@@ -564,56 +1000,69 @@ def render_detect():
                         model, tmp_path, disease
                     )
 
-                    # Display result
                     result_class = "result-negative" if is_healthy else "result-positive"
                     icon = "✅" if is_healthy else "⚠️"
 
-                    st.markdown(f"""
+                    render_html(f"""
                     <div class="result-box {result_class}">
                         <div class="result-title">{icon} {prediction}</div>
                         <div class="confidence-badge">Confidence: {confidence * 100:.1f}%</div>
-                        <hr style="border-color: rgba(255,255,255,0.08); margin: 1rem 0;">
-                        <div style="color: #94a3b8; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem;">Expert Veterinary Guidance</div>
+                        <hr style="border-color: #E5E7EB; margin: 1rem 0;">
+                        <div style="color: #6B7280; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem;">Expert Veterinary Guidance</div>
                         <div class="result-advice">{advice}</div>
                     </div>
-                    """, unsafe_allow_html=True)
+                    """)
                     
-                    # ── Probability Graph Section ──
-                    st.markdown("<br>", unsafe_allow_html=True)
-                    st.markdown('<h3 style="color:#f8fafc; font-size:1.25rem;">Health Status Analysis</h3>', unsafe_allow_html=True)
+                    render_html("<br>")
+                    st.markdown('<h3 style="color:#f8fafc; font-size:1.25rem; font-family: Manrope;">Health Status Analysis</h3>', unsafe_allow_html=True)
                     
-                    hist_data = [
-                        ("Unhealthy (Disease Symptoms)", unhealthy_prob * 100, "#ef4444" if unhealthy_prob > healthy_prob else "#fca5a5"),
-                        ("Healthy (No Symptoms)", healthy_prob * 100, "#10b981" if healthy_prob > unhealthy_prob else "#6ee7b7")
-                    ]
+                    healthy_pct = healthy_prob * 100
+                    unhealthy_pct = unhealthy_prob * 100
+
+                    graph_html = f"""
+                    <div style="background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 20px; padding: 1.75rem; margin-top: 0.5rem; box-shadow: 0 8px 24px rgba(0,0,0,0.08);">
+                        <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
+                            <div style="flex: 1; background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 14px; padding: 1.1rem; text-align: center;">
+                                <div style="font-size: 0.82rem; color: #047857; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Healthy (No Symptoms)</div>
+                                <div style="font-family: Manrope; font-size: 2rem; font-weight: 800; color: #059669; margin-top: 0.25rem;">{healthy_pct:.1f}%</div>
+                            </div>
+                            <div style="flex: 1; background: #FEF2F2; border: 1px solid #FECACA; border-radius: 14px; padding: 1.1rem; text-align: center;">
+                                <div style="font-size: 0.82rem; color: #B91C1C; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Unhealthy (Disease Symptoms)</div>
+                                <div style="font-family: Manrope; font-size: 2rem; font-weight: 800; color: #DC2626; margin-top: 0.25rem;">{unhealthy_pct:.1f}%</div>
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 1.25rem;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem; font-size: 0.95rem; font-weight: 700; color: #1F2937;">
+                                <span>🟢 Healthy (No Symptoms)</span>
+                                <span style="color: #059669;">{healthy_pct:.1f}%</span>
+                            </div>
+                            <div style="width: 100%; background: #F3F4F6; border-radius: 8px; height: 16px; overflow: hidden;">
+                                <div style="width: {healthy_pct:.1f}%; background: linear-gradient(90deg, #10B981 0%, #059669 100%); height: 100%; border-radius: 8px;"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem; font-size: 0.95rem; font-weight: 700; color: #1F2937;">
+                                <span>🔴 Unhealthy (Disease Symptoms)</span>
+                                <span style="color: #DC2626;">{unhealthy_pct:.1f}%</span>
+                            </div>
+                            <div style="width: 100%; background: #F3F4F6; border-radius: 8px; height: 16px; overflow: hidden;">
+                                <div style="width: {unhealthy_pct:.1f}%; background: linear-gradient(90deg, #FCA5A5 0%, #EF4444 100%); height: 100%; border-radius: 8px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    """
+                    render_html(graph_html)
                     
-                    graph_html = '<div style="background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 0.75rem; padding: 1.5rem; margin-top: 0.5rem;">'
-                    for label, pct, bar_color in hist_data:
-                        graph_html += f"""
-<div style="margin-bottom: 0.75rem;">
-    <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem; font-size: 0.9rem;">
-        <span style="color: #e2e8f0;">{label}</span>
-        <span style="color: #94a3b8; font-weight: 600;">{pct:.1f}%</span>
-    </div>
-    <div style="width: 100%; background: rgba(0, 0, 0, 0.3); border-radius: 0.25rem; height: 12px; overflow: hidden;">
-        <div style="width: {pct}%; background: {bar_color}; height: 100%; border-radius: 0.25rem; transition: width 0.5s ease;"></div>
-    </div>
-</div>
-"""
-                    graph_html += '</div>'
-                    
-                    st.markdown(graph_html, unsafe_allow_html=True)
-                    
-                    st.markdown(f"""
-                    <div style="background: rgba(30, 41, 59, 0.4); padding: 1.25rem; border-radius: 0.75rem; border-left: 4px solid #3b82f6; margin-top: 1rem;">
-                        <div style="color: #cbd5e1; font-size: 0.95rem; line-height: 1.6;">
+                    render_html(f"""
+                    <div style="background: #FFFFFF; padding: 1.25rem; border-radius: 16px; border-left: 4px solid #10B981; margin-top: 1rem; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+                        <div style="color: #374151; font-size: 0.95rem; line-height: 1.6;">
                             <b>Analysis Explanation:</b> This histogram groups the AI model's raw probabilities into two overall categories: 
                             <b>Healthy</b> and <b>Unhealthy</b>. 
                             The model estimates a <b>{unhealthy_prob * 100:.1f}%</b> probability that the animal exhibits symptoms of the selected disease, 
                             and a <b>{healthy_prob * 100:.1f}%</b> probability that the animal is healthy.
                         </div>
                     </div>
-                    """, unsafe_allow_html=True)
+                    """)
 
                 except Exception as e:
                     st.error(f"An error occurred during examination: {str(e)}")
@@ -623,21 +1072,20 @@ def render_detect():
                         os.remove(tmp_path)
 
 
+# ═══════════════════════════════════════════════
+#                ROUTER & SPLASH
+# ═══════════════════════════════════════════════
 if "splashed" not in st.session_state:
     st.session_state.splashed = False
 
-# ═══════════════════════════════════════════════
-#                ROUTER
-# ═══════════════════════════════════════════════
 if not st.session_state.splashed:
-    # Splash Screen
-    st.markdown("<br><br><br>", unsafe_allow_html=True)
+    render_html("<br><br><br>")
     col1, col2, col3 = st.columns([1, 1, 1])
     with col2:
         logo_path = os.path.join(BASE_DIR, "cattlesense_logo.png")
         if os.path.exists(logo_path):
             st.image(logo_path, use_container_width=True)
-        st.markdown("<h2 style='text-align: center; color: #f8fafc;'>Initializing CattleSense...</h2>", unsafe_allow_html=True)
+        render_html("<h2 style='text-align: center; color: #FFFFFF; font-family: Manrope;'>Initializing CattleSense...</h2>")
     time.sleep(1)
     st.session_state.splashed = True
     st.rerun()
@@ -650,3 +1098,5 @@ else:
         render_internal()
     elif st.session_state.page == "detect":
         render_detect()
+    elif st.session_state.page == "detect_internal":
+        render_detect_internal()
