@@ -105,7 +105,7 @@ render_html("""
         border-bottom: none !important;
         border-top-left-radius: 24px !important;
         border-top-right-radius: 24px !important;
-        padding: 2.25rem 1.5rem 1rem 1.5rem !important;
+        padding: 2.5rem 2rem 1rem 2rem !important;
         text-align: center !important;
         display: flex !important;
         flex-direction: column !important;
@@ -122,27 +122,27 @@ render_html("""
         border-top: none !important;
         border-bottom-left-radius: 24px !important;
         border-bottom-right-radius: 24px !important;
-        padding: 0 1.5rem 2rem 1.5rem !important;
+        padding: 0 2rem 2.25rem 2rem !important;
         box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.15) !important;
         box-sizing: border-box !important;
     }
 
     .card-icon {
-        font-size: 3.25rem;
-        margin-bottom: 0.75rem;
+        font-size: 3.5rem;
+        margin-bottom: 1rem;
         line-height: 1;
     }
     .card-title {
         font-family: 'Manrope', sans-serif;
-        font-size: 1.4rem;
+        font-size: 1.5rem;
         font-weight: 700;
         color: #0F172A;
         margin-bottom: 0.5rem;
     }
     .card-desc {
-        font-size: 0.92rem;
+        font-size: 0.95rem;
         color: #4B5563;
-        line-height: 1.55;
+        line-height: 1.6;
     }
 
     /* ── Category Screen Cards ── */
@@ -205,6 +205,33 @@ render_html("""
         background: rgba(255, 255, 255, 0.16) !important;
         border-color: #34D399 !important;
         color: #34D399 !important;
+    }
+
+    /* ── Floating Action Chatbot Button (Bottom Right Corner) ── */
+    div[data-testid="stButton"]:has(button[key="floating_chat_btn"]) {
+        position: fixed !important;
+        bottom: 25px !important;
+        right: 25px !important;
+        z-index: 999999 !important;
+    }
+    button[key="floating_chat_btn"] {
+        width: auto !important;
+        background: linear-gradient(135deg, #10B981 0%, #059669 100%) !important;
+        color: white !important;
+        border: 2px solid rgba(255, 255, 255, 0.4) !important;
+        border-radius: 50px !important;
+        padding: 0.85rem 1.6rem !important;
+        font-size: 1.05rem !important;
+        font-weight: 800 !important;
+        font-family: 'Manrope', sans-serif !important;
+        box-shadow: 0 10px 25px rgba(16, 185, 129, 0.55), 0 4px 12px rgba(0,0,0,0.3) !important;
+        cursor: pointer !important;
+        transition: all 0.3s ease !important;
+    }
+    button[key="floating_chat_btn"]:hover {
+        transform: translateY(-4px) scale(1.04) !important;
+        box-shadow: 0 15px 35px rgba(16, 185, 129, 0.75), 0 6px 15px rgba(0,0,0,0.4) !important;
+        border-color: #34D399 !important;
     }
 
     /* ── Header Detection Texts ── */
@@ -350,32 +377,6 @@ def render_navbar():
         </div>
     </div>
     """)
-    col_nav1, col_nav2, col_nav3, col_nav4 = st.columns([1, 1, 1, 1])
-    with col_nav1:
-        render_html('<div class="sec-button">')
-        if st.button("🏠 Home", key="nav_home"):
-            go_home()
-            st.rerun()
-        render_html('</div>')
-    with col_nav2:
-        render_html('<div class="sec-button">')
-        if st.button("👁️ External", key="nav_ext"):
-            go_external()
-            st.rerun()
-        render_html('</div>')
-    with col_nav3:
-        render_html('<div class="sec-button">')
-        if st.button("🫀 Internal", key="nav_int"):
-            go_internal()
-            st.rerun()
-        render_html('</div>')
-    with col_nav4:
-        render_html('<div class="sec-button">')
-        if st.button("💬 Chatbot", key="nav_chat"):
-            go_chatbot()
-            st.rerun()
-        render_html('</div>')
-    render_html("<br>")
 
 
 # ─── Model Loading ───
@@ -830,9 +831,9 @@ def render_home():
     render_navbar()
 
     render_html('<div class="hero-title">🐄 CattleSense</div>')
-    render_html('<div class="hero-subtitle">Select a category to begin examination or consult our AI Chatbot</div>')
+    render_html('<div class="hero-subtitle">Select a category to begin</div>')
 
-    col1, col2, col3 = st.columns(3, gap="medium")
+    col1, col2 = st.columns(2, gap="large")
 
     with col1:
         render_html("""
@@ -862,26 +863,20 @@ def render_home():
             st.rerun()
         render_html('</div>')
 
-    with col3:
-        render_html("""
-        <div class="home-card-top">
-            <div class="card-icon">💬</div>
-            <div class="card-title">Cattle Assistant</div>
-            <div class="card-desc">Consult our specialized Gemini AI Chatbot for cattle health, symptoms, and veterinary advice</div>
-        </div>
-        <div class="home-card-bottom">
-        """)
-        if st.button("Launch Chatbot", key="btn_chat"):
-            go_chatbot()
-            st.rerun()
-        render_html('</div>')
-
 
 # ═══════════════════════════════════════════════
 #             CATTLE HEALTH CHATBOT PAGE
 # ═══════════════════════════════════════════════
 def render_chatbot():
     render_navbar()
+
+    col_back, col_empty = st.columns([1.5, 4.5])
+    with col_back:
+        render_html('<div class="sec-button">')
+        if st.button("← Back to Home", key="back_from_chat"):
+            go_home()
+            st.rerun()
+        render_html('</div>')
 
     render_html('<div class="detect-header">💬 CattleSense Veterinary Assistant</div>')
     render_html('<div class="detect-sub">Powered by Gemini AI — Specialized exclusively in Cattle Health & Bovine Care</div>')
@@ -1450,6 +1445,12 @@ if not st.session_state.splashed:
     st.session_state.splashed = True
     st.rerun()
 else:
+    # Floating Action Chatbot Button (Bottom-Right Corner across all pages except Chatbot)
+    if st.session_state.page != "chatbot":
+        if st.button("💬 Ask Cattle AI", key="floating_chat_btn"):
+            go_chatbot()
+            st.rerun()
+
     if st.session_state.page == "home":
         render_home()
     elif st.session_state.page == "external":
