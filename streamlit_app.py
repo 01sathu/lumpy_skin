@@ -1103,7 +1103,36 @@ def render_treatment():
         </div>
         <div style="color: #94A3B8; font-size: 1.05rem; font-weight: 500; margin-top: 0.75rem;">{t['tagline']}</div>
     </div>
+    """)
 
+    # ── Suitable Medicine Result & Related Image Display Section ──
+    c_img, c_info = st.columns([1.1, 1], gap="large")
+    with c_img:
+        img_name = "ayurvedic_medicine.png" if t["type"] == "Ayurvedic" else "allopathic_medicine.png"
+        img_path = os.path.join(BASE_DIR, img_name)
+        if os.path.exists(img_path):
+            st.image(img_path, caption=f"{t['type']} Medicine Therapy for {t['name']}", use_container_width=True)
+
+    with c_info:
+        render_html(f"""
+        <div style="background: rgba(255, 255, 255, 0.08); backdrop-filter: blur(14px); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 24px; padding: 2rem; box-shadow: 0 12px 30px rgba(0,0,0,0.25); height: 100%; display: flex; flex-direction: column; justify-content: center;">
+            <div style="font-size: 0.85rem; color: {t['badge_color']}; background: {t['badge_bg']}; display: inline-block; padding: 0.35rem 1rem; border-radius: 50px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 1rem; width: fit-content;">
+                {t['icon']} Diagnosis Result
+            </div>
+            <div style="font-family: 'Manrope', sans-serif; font-size: 1.85rem; font-weight: 800; color: #FFFFFF; margin-bottom: 0.75rem;">
+                {t['type']} Medicine is Suitable
+            </div>
+            <div style="color: #E2E8F0; font-size: 1.02rem; line-height: 1.7; margin-bottom: 1rem;">
+                For <b>{t['name']}</b>, an <b>{t['type']}</b> treatment approach is recommended to achieve optimal recovery, targeted lesion repair, and systemic bovine health restoration.
+            </div>
+            <div style="font-size: 0.92rem; color: #34D399; font-weight: 700;">
+                ✓ Verified Veterinary Protocol • Specialized {t['type']} Medicine Setup
+            </div>
+        </div>
+        """)
+
+    render_html(f"""
+    <br>
     <div style="background: rgba(255, 255, 255, 0.07); backdrop-filter: blur(14px); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 24px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 12px 30px rgba(0,0,0,0.25);">
         <div style="font-family: 'Manrope', sans-serif; font-size: 1.25rem; font-weight: 800; color: #FFFFFF; margin-bottom: 0.75rem;">Medical Overview</div>
         <div style="color: #E2E8F0; font-size: 1.02rem; line-height: 1.7;">{t['overview']}</div>
