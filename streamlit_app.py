@@ -250,6 +250,15 @@ render_html("""
         margin-bottom: 2rem;
     }
 
+    /* ── Internal Questionnaire White Text Override ── */
+    [data-testid="stRadio"] label p,
+    [data-testid="stRadio"] label span,
+    [data-testid="stRadio"] label div {
+        color: #FFFFFF !important;
+        font-weight: 600 !important;
+        font-size: 1rem !important;
+    }
+
     /* ── Streamlit Native Chat Element Custom Styling ── */
     [data-testid="stChatMessage"] {
         background: #FFFFFF !important;
@@ -1186,12 +1195,12 @@ def render_detect_internal():
         st.error(f"⚠️ The {display_name} model is not yet available.")
         return
 
-    render_html('<div style="background: #FFFFFF; padding: 2rem; border-radius: 20px; border: 1px solid #E5E7EB; margin-bottom: 2rem; box-shadow: 0 10px 25px rgba(0,0,0,0.08);">')
-    st.markdown("<h3 style='color: #0F172A; margin-bottom: 1.5rem; font-family: Manrope;'>Clinical Questionnaire</h3>", unsafe_allow_html=True)
+    render_html('<div style="background: rgba(255, 255, 255, 0.06); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.15); padding: 2rem; border-radius: 24px; margin-bottom: 2rem; box-shadow: 0 12px 32px rgba(0,0,0,0.25);">')
+    st.markdown("<h3 style='color: #FFFFFF; margin-bottom: 1.5rem; font-family: Manrope; font-weight: 800;'>Clinical Questionnaire</h3>", unsafe_allow_html=True)
     
     answers = {}
     for key, q_text, options in questions:
-        render_html(f"<div style='color: #374151; font-weight: 600; font-size: 1.02rem; margin-bottom: 0.5rem;'>{q_text}</div>")
+        render_html(f"<div style='color: #FFFFFF; font-weight: 700; font-size: 1.05rem; margin-bottom: 0.6rem;'>{q_text}</div>")
         ans = st.radio("Select answer:", options=options, key=key, horizontal=True, label_visibility="collapsed")
         if ans == "Yes":
             answers[key] = 2 if len(options) == 3 else 1
@@ -1199,7 +1208,7 @@ def render_detect_internal():
             answers[key] = 1
         else:
             answers[key] = 0
-        render_html("<hr style='border-color: #E5E7EB; margin: 1rem 0;'>")
+        render_html("<hr style='border-color: rgba(255, 255, 255, 0.12); margin: 1.25rem 0;'>")
         
     render_html('</div>')
 
