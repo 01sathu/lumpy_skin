@@ -955,6 +955,184 @@ def render_chatbot():
 
 
 # ═══════════════════════════════════════════════
+#             RECOMMENDED TREATMENT PAGE
+# ═══════════════════════════════════════════════
+def render_treatment():
+    disease = st.session_state.get("treatment_disease", "fmd")
+    prev_page = st.session_state.get("treatment_prev_page", "home")
+
+    treatment_data = {
+        "fmd": {
+            "name": "Foot and Mouth Disease (FMD)",
+            "type": "Ayurvedic",
+            "icon": "🌿",
+            "badge_color": "#B45309",
+            "badge_bg": "#FEF3C7",
+            "bg_theme": "linear-gradient(135deg, #0A2619 0%, #15402C 50%, #081C13 100%)",
+            "card_border": "#10B981",
+            "tagline": "Traditional Herbal & Botanical Treatment Protocol",
+            "overview": "Foot and Mouth Disease is a highly contagious viral condition affecting cloven-hoofed livestock. Traditional Ayurvedic management focuses on soothing painful vesicles, arresting viral lesions, and boosting innate immunity using potent herbal antiseptics.",
+            "steps": [
+                ("🌿 Oral Mouth Paste", "Prepare a smooth paste of Cumin (20g), Black Pepper (20g), Garlic (5 cloves), Turmeric powder (20g), Rock Salt (15g), and pure Jaggery (100g). Apply gently over tongue and mouth vesicles 3 times daily to relieve pain and promote healing."),
+                ("🍃 Hoof Wash & Healing Ointment", "Boil fresh Neem leaves in water and allow it to cool. Thoroughly wash infected hooves twice daily. Apply a paste of Turmeric powder mixed with Neem oil or Sesame oil directly to hoof interdigital lesions."),
+                ("🥛 Soft Gruel Diet & Hydration", "Feed warm, soft rice gruel mixed with jaggery and fresh tender green grass. Avoid coarse dry forage to prevent mouth mucosal irritation."),
+                ("🛡️ Bio-Security & Herbal Fumigation", "Burn dried Neem leaves and natural Camphor in stall premises every evening to repel flies and reduce environmental pathogen load.")
+            ]
+        },
+        "lumpy": {
+            "name": "Lumpy Skin Disease (LSD)",
+            "type": "Ayurvedic",
+            "icon": "🌿",
+            "badge_color": "#B45309",
+            "badge_bg": "#FEF3C7",
+            "bg_theme": "linear-gradient(135deg, #0A2619 0%, #15402C 50%, #081C13 100%)",
+            "card_border": "#10B981",
+            "tagline": "Botanical Immunomodulatory & Topical Healing Protocol",
+            "overview": "Lumpy Skin Disease is a vector-borne capripoxvirus infection causing firm cutaneous nodules and systemic fever. Ayurvedic therapy emphasizes topical antiviral pastes to dry out skin nodules and oral herbal decoctions to enhance viral defense.",
+            "steps": [
+                ("🌿 Topical Nodule Antiseptic Paste", "Grind fresh Neem leaves (100g), Betel leaves (10 nos), Turmeric (50g), and Garlic (10 cloves) into a fine paste with Coconut oil. Apply generously over skin nodules twice daily."),
+                ("🍵 Anti-Viral Immunity Decoction", "Boil Tulsi leaves (20 nos), Black Pepper (10g), Ginger (10g), Cumin (10g), and Jaggery in 1 liter of water until reduced by half. Administer 250 mL orally once daily."),
+                ("🧼 Open Lesion Wound Spray", "For ruptured nodules, spray a solution of Neem leaf extract and Turmeric water to prevent secondary fly-strike and maggots."),
+                ("🦟 Insect Repellent Stall Spray", "Spray diluted Neem oil (5%) around animal bedding and stall walls to repel mosquitoes, biting flies, and ticks.")
+            ]
+        },
+        "udder": {
+            "name": "Udder Disease (Bovine Mastitis)",
+            "type": "Allopathic",
+            "icon": "💊",
+            "badge_color": "#0369A1",
+            "badge_bg": "#E0F2FE",
+            "bg_theme": "linear-gradient(135deg, #0A192F 0%, #17385E 50%, #071224 100%)",
+            "card_border": "#38BDF8",
+            "tagline": "Modern Clinical & Targeted Pharmaceutical Protocol",
+            "overview": "Bovine Mastitis is an inflammatory bacterial infection of the udder quarters requiring rapid clinical intervention. Allopathic management focuses on targeted intramammary antibiotics, systemic anti-inflammatory pain relief, and strict milking hygiene.",
+            "steps": [
+                ("💉 Intramammary Antibiotic Tubes", "After complete hand/machine milking, disinfect teat ends with alcohol wipes and infuse targeted intramammary antibiotic tubes (e.g., Cloxacillin, Amoxicillin-Clavulanate, or Ceftiofur) into affected quarters as prescribed by a veterinarian."),
+                ("💊 Systemic NSAIDs & Pain Relief", "Administer intramuscular Meloxicam (0.5 mg/kg body weight) or Tolfenamic Acid under veterinary prescription to reduce severe udder swelling, fever, and parenchymal tissue damage."),
+                ("🧼 Antiseptic Teat Dip Hygiene", "Apply a 0.5% Chlorhexidine or 1% Povidone-Iodine teat dip immediately post-milking. Maintain clean, dry, disinfected bedding."),
+                ("🧪 Milk Culture & Sensitivity Test", "Collect quarter milk samples in sterile vials and perform antibiotic sensitivity testing (AST) to prevent antimicrobial resistance.")
+            ]
+        },
+        "bloat": {
+            "name": "Bloating (Ruminal Tympany)",
+            "type": "Ayurvedic",
+            "icon": "🌿",
+            "badge_color": "#B45309",
+            "badge_bg": "#FEF3C7",
+            "bg_theme": "linear-gradient(135deg, #0A2619 0%, #15402C 50%, #081C13 100%)",
+            "card_border": "#10B981",
+            "tagline": "Herbal Antifoaming & Carminative Rumen Therapy",
+            "overview": "Ruminal Tympany is the excessive accumulation of gas or stable foam within the rumen. Ayurvedic treatment rapidly breaks down trapped gas bubbles and restores normal digestive contractions using carminative herbs and vegetable oils.",
+            "steps": [
+                ("🌿 Herbal Anti-Foam Drench", "Dissolve Asafoetida (Hing - 10g), Ajwain / Carom seeds (20g), Ginger powder (20g), and Rock Salt (25g) in 250 mL of warm Mustard oil or Sesame oil. Administer slowly via oral drenching to break gas bubbles."),
+                ("🍃 Carminative Rumen Motility Paste", "Feed a paste of Black Pepper, Cumin powder, Garlic, and Jaggery to stimulate ruminal motility and eructation (burping)."),
+                ("🚶 Forced Walking & Position Control", "Keep the animal standing and walk it uphill continuously. Do not allow the animal to lie down to avoid pressure on diaphragm and lungs."),
+                ("🚫 Feed Restriction", "Withhold high-protein legume pastures (alfalfa/clover) and concentrated grains for 24 hours until rumen motility normalizes.")
+            ]
+        },
+        "milk_fever": {
+            "name": "Milk Fever (Hypocalcemia)",
+            "type": "Allopathic",
+            "icon": "💊",
+            "badge_color": "#0369A1",
+            "badge_bg": "#E0F2FE",
+            "bg_theme": "linear-gradient(135deg, #0A192F 0%, #17385E 50%, #071224 100%)",
+            "card_border": "#38BDF8",
+            "tagline": "Emergency Intravenous & Metabolic Calcium Therapy",
+            "overview": "Milk Fever is an acute metabolic crisis caused by sudden drop in blood calcium post-calving. Allopathic intervention demands urgent intravenous calcium administration to prevent muscle paralysis and cardiac collapse.",
+            "steps": [
+                ("💉 Emergency Intravenous Calcium Infusion", "Urgently call a licensed veterinarian to administer 400–500 mL of 23% Calcium Borogluconate solution intravenously (slow IV drip over 15–20 minutes with cardiac monitoring)."),
+                ("🧪 High-Potency Oral Calcium Gel", "Administer oral calcium formate / calcium chloride gels once the cow regains swallow reflex and stands up to prevent calcium relapse."),
+                ("🐄 Sternal Sitting Positioning", "Prop the downer cow in an upright sitting (sternal) position using straw bales to prevent rumen regurgitation and aspiration pneumonia."),
+                ("⚠️ Strict Caution", "NEVER attempt oral drenching while the cow is flat on its side or unable to swallow, as fluids will enter the lungs causing fatal pneumonia.")
+            ]
+        },
+        "ketosis": {
+            "name": "Ketosis (Acetonemia)",
+            "type": "Allopathic",
+            "icon": "💊",
+            "badge_color": "#0369A1",
+            "badge_bg": "#E0F2FE",
+            "bg_theme": "linear-gradient(135deg, #0A192F 0%, #17385E 50%, #071224 100%)",
+            "card_border": "#38BDF8",
+            "tagline": "Clinical Energy Precursor & Hepatic Glucose Therapy",
+            "overview": "Bovine Ketosis is a metabolic disorder caused by negative energy balance in early lactation dairy cows. Allopathic treatment supplies immediate glucogenic precursors and intravenous glucose to normalize blood ketone levels.",
+            "steps": [
+                ("🧪 Glucogenic Oral Drench", "Administer 300 mL of Propylene Glycol or Glycerol orally twice daily for 3 to 5 days to provide immediate glucose precursors to the liver."),
+                ("💉 Intravenous 50% Dextrose & Vitamin B12", "Administer 500 mL of IV 50% Dextrose solution together with Vitamin B12 (Cyanocobalamin) injections under veterinary prescription to boost hepatic gluconeogenesis."),
+                ("🌾 High Energy Ration Optimization", "Increase digestible starch and high-quality bypass protein in daily feed. Remove moldy silage and balance dietary anion-cation difference (DCAD)."),
+                ("📊 Blood/Milk Ketone Monitoring", "Test milk or blood ketone levels daily using beta-hydroxybutyrate (BHB) test strips until levels fall below 1.2 mmol/L.")
+            ]
+        }
+    }
+
+    t = treatment_data.get(disease, treatment_data["fmd"])
+
+    # Dynamically inject custom background gradient per medicine type
+    render_html(f"""
+    <style>
+        .stApp {{
+            background: {t['bg_theme']} !important;
+            background-attachment: fixed !important;
+        }}
+    </style>
+    """)
+
+    render_navbar()
+
+    col_b1, col_b2 = st.columns([2, 4])
+    with col_b1:
+        render_html('<div class="sec-button">')
+        if st.button("← Back to Examination Result", key="back_from_treatment"):
+            st.session_state.page = prev_page
+            st.rerun()
+        render_html('</div>')
+    with col_b2:
+        render_html('<div class="sec-button" style="width: auto; float: right;">')
+        if st.button("🏠 Back to Home", key="home_from_treatment"):
+            go_home()
+            st.rerun()
+        render_html('</div>')
+
+    render_html(f"""
+    <div style="text-align: center; margin-bottom: 2rem; margin-top: 1rem;">
+        <div style="font-size: 3.5rem; margin-bottom: 0.5rem;">{t['icon']}</div>
+        <div style="font-family: 'Manrope', sans-serif; font-size: 2.4rem; font-weight: 800; color: #FFFFFF; margin-bottom: 0.5rem;">{t['name']}</div>
+        <div style="display: inline-block; background: {t['badge_bg']}; color: {t['badge_color']}; font-weight: 800; font-size: 0.95rem; padding: 0.4rem 1.4rem; border-radius: 50px; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 4px 14px rgba(0,0,0,0.15);">
+            {t['icon']} Recommended Medicine Type: {t['type']}
+        </div>
+        <div style="color: #94A3B8; font-size: 1.05rem; font-weight: 500; margin-top: 0.75rem;">{t['tagline']}</div>
+    </div>
+
+    <div style="background: rgba(255, 255, 255, 0.07); backdrop-filter: blur(14px); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 24px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 12px 30px rgba(0,0,0,0.25);">
+        <div style="font-family: 'Manrope', sans-serif; font-size: 1.25rem; font-weight: 800; color: #FFFFFF; margin-bottom: 0.75rem;">Medical Overview</div>
+        <div style="color: #E2E8F0; font-size: 1.02rem; line-height: 1.7;">{t['overview']}</div>
+    </div>
+
+    <h3 style="color: #FFFFFF; font-family: 'Manrope', sans-serif; font-size: 1.5rem; font-weight: 800; margin-bottom: 1.25rem;">Recommended Treatment Protocol ({t['type']})</h3>
+    """)
+
+    for idx, (title, desc) in enumerate(t["steps"], 1):
+        render_html(f"""
+        <div style="background: #FFFFFF; border-left: 6px solid {t['card_border']}; border-radius: 18px; padding: 1.5rem; margin-bottom: 1.25rem; box-shadow: 0 8px 24px rgba(0,0,0,0.12); color: #1F2937;">
+            <div style="font-family: 'Manrope', sans-serif; font-size: 1.15rem; font-weight: 800; color: #0F172A; margin-bottom: 0.5rem;">
+                Step {idx}: {title}
+            </div>
+            <div style="color: #374151; font-size: 0.98rem; line-height: 1.7;">
+                {desc}
+            </div>
+        </div>
+        """)
+
+    render_html("""
+    <div style="background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 18px; padding: 1.25rem; margin-top: 2rem; text-align: center; color: #FECACA;">
+        <b>⚠️ Veterinary Disclaimer:</b> This treatment protocol is provided for educational and diagnostic support purposes. Always consult a qualified veterinary doctor for administration of prescription pharmaceuticals or invasive emergency procedures.
+    </div>
+    <br><br>
+    """)
+
+
+# ═══════════════════════════════════════════════
 #             EXTERNAL DISEASES PAGE
 # ═══════════════════════════════════════════════
 def render_external():
@@ -1285,6 +1463,19 @@ def render_detect_internal():
             """
             render_html(graph_html)
 
+            # ── Recommended Medicine Button if Unhealthy ──
+            if not is_healthy:
+                render_html("<br>")
+                med_type = "Ayurvedic" if disease in ["fmd", "lumpy", "bloat"] else "Allopathic"
+                icon = "🌿" if med_type == "Ayurvedic" else "💊"
+                c1, c2, c3 = st.columns([0.5, 3, 0.5])
+                with c2:
+                    if st.button(f"{icon} View Recommended {med_type} Treatment & Medicine →", key="btn_rx_int"):
+                        st.session_state.treatment_disease = disease
+                        st.session_state.treatment_prev_page = "detect_internal"
+                        st.session_state.page = "treatment"
+                        st.rerun()
+
 
 # ═══════════════════════════════════════════════
 #             DETECTION EXTERNAL PAGE
@@ -1428,6 +1619,19 @@ def render_detect():
                     </div>
                     """)
 
+                    # ── Recommended Medicine Button if Unhealthy ──
+                    if not is_healthy:
+                        render_html("<br>")
+                        med_type = "Ayurvedic" if disease in ["fmd", "lumpy", "bloat"] else "Allopathic"
+                        icon = "🌿" if med_type == "Ayurvedic" else "💊"
+                        c1, c2, c3 = st.columns([0.5, 3, 0.5])
+                        with c2:
+                            if st.button(f"{icon} View Recommended {med_type} Treatment & Medicine →", key="btn_rx_ext"):
+                                st.session_state.treatment_disease = disease
+                                st.session_state.treatment_prev_page = "detect"
+                                st.session_state.page = "treatment"
+                                st.rerun()
+
                 except Exception as e:
                     st.error(f"An error occurred during examination: {str(e)}")
 
@@ -1455,7 +1659,7 @@ if not st.session_state.splashed:
     st.rerun()
 else:
     # Floating Action Chatbot Button (Bottom-Right Corner across all pages except Chatbot)
-    if st.session_state.page != "chatbot":
+    if st.session_state.page not in ["chatbot", "treatment"]:
         if st.button("💬 Ask Cattle AI", key="floating_chat_btn"):
             go_chatbot()
             st.rerun()
@@ -1468,6 +1672,8 @@ else:
         render_internal()
     elif st.session_state.page == "chatbot":
         render_chatbot()
+    elif st.session_state.page == "treatment":
+        render_treatment()
     elif st.session_state.page == "detect":
         render_detect()
     elif st.session_state.page == "detect_internal":
