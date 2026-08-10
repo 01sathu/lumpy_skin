@@ -15,7 +15,6 @@ import streamlit as st
 from ultralytics import YOLO
 from PIL import Image
 import tempfile
-import time
 import pickle
 import pandas as pd
 
@@ -1670,40 +1669,25 @@ def render_detect():
 
 
 # ═══════════════════════════════════════════════
-#                ROUTER & SPLASH
+#                ROUTER
 # ═══════════════════════════════════════════════
-if "splashed" not in st.session_state:
-    st.session_state.splashed = False
+# Floating Action Chatbot Button (Bottom-Right Corner across all pages except Chatbot & Treatment)
+if st.session_state.page not in ["chatbot", "treatment"]:
+    if st.button("💬 Ask Cattle AI", key="floating_chat_btn"):
+        go_chatbot()
+        st.rerun()
 
-if not st.session_state.splashed:
-    render_html("<br><br><br>")
-    col1, col2, col3 = st.columns([1, 1, 1])
-    with col2:
-        logo_path = os.path.join(BASE_DIR, "cattlesense_logo.png")
-        if os.path.exists(logo_path):
-            st.image(logo_path, use_container_width=True)
-        render_html("<h2 style='text-align: center; color: #FFFFFF; font-family: Manrope;'>Initializing CattleSense...</h2>")
-    time.sleep(1)
-    st.session_state.splashed = True
-    st.rerun()
-else:
-    # Floating Action Chatbot Button (Bottom-Right Corner across all pages except Chatbot)
-    if st.session_state.page not in ["chatbot", "treatment"]:
-        if st.button("💬 Ask Cattle AI", key="floating_chat_btn"):
-            go_chatbot()
-            st.rerun()
-
-    if st.session_state.page == "home":
-        render_home()
-    elif st.session_state.page == "external":
-        render_external()
-    elif st.session_state.page == "internal":
-        render_internal()
-    elif st.session_state.page == "chatbot":
-        render_chatbot()
-    elif st.session_state.page == "treatment":
-        render_treatment()
-    elif st.session_state.page == "detect":
-        render_detect()
-    elif st.session_state.page == "detect_internal":
-        render_detect_internal()
+if st.session_state.page == "home":
+    render_home()
+elif st.session_state.page == "external":
+    render_external()
+elif st.session_state.page == "internal":
+    render_internal()
+elif st.session_state.page == "chatbot":
+    render_chatbot()
+elif st.session_state.page == "treatment":
+    render_treatment()
+elif st.session_state.page == "detect":
+    render_detect()
+elif st.session_state.page == "detect_internal":
+    render_detect_internal()
